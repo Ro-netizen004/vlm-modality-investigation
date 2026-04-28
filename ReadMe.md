@@ -1,7 +1,5 @@
 # Effect of Input Modality on Mathematical Reasoning in Vision-Language Models
 
-[![Open In Colab](https://colab.research.google.com/assets/colab-badge.svg)](https://colab.research.google.com/github/YOURUSERNAME/vlm-gsm8k-benchmark/blob/main/notebook/VLM_GSM8K_Benchmarking.ipynb)
-
 Presented at the **USF UR2PhD Symposium 2025** · [View Poster](poster/VLM_GSM8K_Poster.pdf)
 
 ---
