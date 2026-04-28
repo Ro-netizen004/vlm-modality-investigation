@@ -55,11 +55,11 @@ This project investigates how input modality affects mathematical reasoning in v
 ## Repository Structure
 
 ```
-vlm-gsm8k-benchmark/
+vlm-modality-research/
 ├── README.md
 ├── notebooks/
-│   ├── VLM_GSM8K_Benchmarking.ipynb   
-├── rendered_images   
+│   ├── VLM_GSM8K_Benchmarking.ipynb
+├── rendered_images
 ├── results/
 │   ├── Qwen2-VL-2B-Instruct/
 │   │   ├── gsm8k_vlm_results.csv
