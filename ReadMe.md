@@ -1,124 +1,137 @@
 # Effect of Input Modality on Mathematical Reasoning in Vision-Language Models
 
+[![Open In Colab](https://colab.research.google.com/assets/colab-badge.svg)](https://colab.research.google.com/github/YOURUSERNAME/vlm-gsm8k-benchmark/blob/main/notebook/VLM_GSM8K_Benchmarking.ipynb)
+
+Presented at the **USF UR2PhD Symposium 2025** · [View Poster](poster/VLM_GSM8K_Poster.pdf)
+
+---
+
 ## Overview
 
-This project studies how different input modalities affect mathematical reasoning performance in vision-language models. Using the GSM8K dataset of grade-school math word problems, we evaluate how a multimodal model performs under different input formats while keeping the model, dataset, and evaluation pipeline fixed.
+This project investigates how input modality affects mathematical reasoning in vision-language models (VLMs). Using 100 problems from the GSM8K benchmark, we evaluate two models across three controlled conditions — text-only, rendered image, and a novel modality mismatch condition — to isolate the effect of input format on reasoning performance.
 
-We use the Qwen2-VL-7B-Instruct model from the Qwen family to compare reasoning performance across text-only, image-based, and multimodal settings.
+**Key findings:**
+- Visual input causes substantial accuracy drops in both models (−25pp for Qwen2, −19pp for LLaVA)
+- Arithmetic errors increase significantly under image input; vision/OCR errors remain negligible
+- In the mismatch condition, both models follow the text modality in over 75% of cases, revealing strong implicit text dominance
 
-## Objectives
+---
 
-- Compare mathematical reasoning performance across different input modalities
-- Evaluate the impact of vision encoders on GSM8K reasoning tasks
-- Study robustness to different visual representations (clean images vs screenshots)
-- Analyze multimodal fusion (text + image) effects
-- Perform error classification across conditions
+## Models
 
-## Note: Screenshot experimentation will be implemented at a later time.
+| Model | Size | Type |
+|-------|------|------|
+| Qwen2-VL-2B-Instruct | 2B | Open-source, local |
+| LLaVA-v1.6-Mistral-7B | 7B | Open-source, local |
 
-## Experimental Setup
+---
 
-### Dataset
-- GSM8K (Grade School Math Word Problems)
-- 100 samples from the test split
+## Experimental Conditions
 
-### Input Conditions
+| Condition | Input | Vision Encoder |
+|-----------|-------|----------------|
+| 1 — Text-Only | Raw problem text | Disabled |
+| 2 — Rendered Image | Clean PIL-rendered PNG | Enabled |
+| 3 — Modality Mismatch | Image of problem i + text of problem i+1 | Enabled |
 
-1. Text-only  
-   Raw GSM8K question as text
+---
 
-2. Rendered Image  
-   Questions converted into clean images using PIL rendering
+## Results
 
-3. Screenshot Input  (To be implemented)
-   Real-world screenshot-style images with visual noise
+**Table 1: Zero-Shot Accuracy**
 
-4. Text + Image Fusion  
-   Both image and original text provided to the model
+| Model | Text-Only | Rendered Image | Drop |
+|-------|-----------|----------------|------|
+| Qwen2-VL-2B | 55% | 30% | −25pp |
+| LLaVA-1.6-7B | 40% | 21% | −19pp |
 
-### Model
-- Qwen2-VL-7B-Instruct
+**Table 2: Modality Preference Under Conflict (n=100)**
 
-### Hardware
-- Google Colab
-- NVIDIA T4 GPU
+| Model | Follows Image | Follows Text | Equal |
+|-------|--------------|--------------|-------|
+| Qwen2-VL-2B | 20 | 79 | 1 |
+| LLaVA-1.6-7B | 23 | 76 | 0 |
 
-## How to Run (Google Colab)
+---
 
-1. Open the notebook:
-   VLM_GSM8K_Benchmarking.ipynb
+## Repository Structure
 
-2. Enable GPU:
-   Runtime → Change runtime type → GPU (T4)
+```
+vlm-gsm8k-benchmark/
+├── README.md
+├── notebooks/
+│   ├── VLM_GSM8K_Benchmarking.ipynb   
+├── rendered_images   
+├── results/
+│   ├── Qwen2-VL-2B-Instruct/
+│   │   ├── gsm8k_vlm_results.csv
+│   │   ├── error_summary.csv
+│   │   └── mismatch_results.csv
+│   └── LLaVa_1.6/
+│       ├── gsm8k_vlm_results.csv
+│       ├── error_summary.csv
+│       └── mismatch_results.csv
+└── poster/
+    └── VLM_GSM8K_Poster.pdf
+```
 
-3. Install dependencies:
-   pip install torch transformers datasets pillow tqdm pandas
+---
 
-4. Run the notebook sequentially:
-   - Load GSM8K dataset
-   - Load Qwen2-VL model
-   - Run experiments for all conditions:
-     - Text-only
-     - Rendered image
-     - Screenshot input
-     - Text + image fusion
+## How to Run
 
-5. View results:
-   The notebook computes accuracy, error types, and saves results automatically.
+1. Open the relevant notebook in Google Colab
+2. Enable GPU: **Runtime → Change runtime type → T4 GPU**
+3. Upload your pre-rendered images to `/content/images/` in the Colab file browser
+4. Set `IMAGE_DIR = "/content/images"` in the config cell
+5. Run all cells sequentially
 
-## Evaluation Method
+**Dependencies are installed automatically by the first cell.**
 
-We evaluate model outputs using:
-- Exact numeric matching against GSM8K ground truth
-- Extraction of final numeric answer from model output
-- Error classification into:
-  - arithmetic errors
-  - reasoning errors
-  - vision/OCR errors
-  - missing or invalid outputs
+---
 
+## Evaluation
 
-## Key Findings
+- Numeric answer extracted using GSM8K canonical format (`#### <answer>`) with fallback to last number in output
+- Answers compared by rounding to nearest integer
+- Error classification: `correct`, `arithmetic_error`, `reasoning_error`, `no_number`, `vision_error`
+- Mismatch condition scored by absolute numeric distance to each modality's ground truth
 
-- Text-only reasoning provides a strong baseline performance
-- Vision input can improve or degrade performance depending on image quality
-- Screenshot inputs test real-world robustness of vision encoders
-- Multimodal fusion does not guarantee consistent improvement over text-only reasoning
-- Error patterns differ significantly across modalities
-
-## Outputs Generated
-
-- text_only_results.csv
-- rendered_image_results.csv
-- screenshot_results.csv
-- fusion_results.csv
-- disagreements.csv
+---
 
 ## Limitations
 
-- Small evaluation size (100 samples)
-- Single main model (Qwen2-VL-7B-Instruct)
-- Limited by T4 GPU constraints
-- Some variation due to nondeterministic generation
+- 100 problems is a small sample — findings are indicative rather than statistically conclusive
+- Both models are relatively small (2B and 7B); behaviour may differ at larger scales
+- Rendered images use clean digital text — real-world visual noise not tested
+- Evaluation on GSM8K only; generalisability to other math benchmarks not confirmed
+
+---
 
 ## Future Work
 
-- Scale to full GSM8K dataset
-- Evaluate more vision-language models
-- Improve multimodal fusion prompting strategies
-- Test additional reasoning datasets (SVAMP, AQuA-RAT)
-- Optimize inference efficiency for low-resource GPUs
+- Scale to the full GSM8K test set for statistical reliability
+- Add significance testing (McNemar's test, chi-squared)
+- Evaluate frontier models (GPT-4o, Gemini 2.0) to assess whether text dominance persists at scale
+- Implement screenshot condition with controlled noise levels
+- Test on additional benchmarks (SVAMP, AQuA-RAT)
 
-## Author
+---
 
-Rodela Ghosh  
-University of South Florida (USF)
+## References
 
-Aviral Gupta 
-University of South Florida (USF)
+[1] Cobbe et al. (2021). Training Verifiers to Solve Math Word Problems. arXiv:2110.14168.  
+[2] Wang et al. (2024). Qwen2-VL: Enhancing Vision-Language Model's Perception of the World at Any Resolution. arXiv:2409.12191.  
+[3] Liu et al. (2024). LLaVA-NeXT: Improved Baselines with Visual Instruction Tuning. arXiv:2310.03744.
+
+---
+
+## Authors
+
+**Rodela Ghosh** · University of South Florida  
+**Aviral Gupta** · University of South Florida
+
+---
 
 ## Acknowledgements
 
-- GSM8K dataset creators
-- Hugging Face Transformers library
-- Qwen model contributors
+This project was conducted through the PALM Lab at the University of South Florida under the UR2PhD program. The authors thank graduate mentors Ocean Monjur and Shrestha Datta for their guidance and mentorship. We also thank PI Anshuman Chhabra and the UR2PhD team for providing research training, resources, and the opportunity to present this work.
