@@ -1,0 +1,38 @@
+# Python
+__pycache__/
+*.py[cod]
+*.pyd
+*.so
+.Python
+
+# Virtual environments
+.venv/
+venv/
+ENV/
+env/
+
+# Jupyter / IPython
+.ipynb_checkpoints/
+
+# OS files
+.DS_Store
+Thumbs.db
+
+# IDE
+.vscode/
+.idea/
+
+# Cursor
+.cursor/
+
+# Logs
+*.log
+
+# Generated experiment outputs
+vlm_benchmark_outputs/
+rendered_images/
+
+# Generated metadata/artifacts
+gsm8k_metadata.csv
+render_progress.json
+render_config.json

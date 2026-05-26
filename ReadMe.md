@@ -57,9 +57,13 @@ This project investigates how input modality affects mathematical reasoning in v
 ```
 vlm-modality-research/
 ├── README.md
+├── requirements.txt
+├── scripts/
+│   └── render_gsm8k.py
 ├── notebooks/
 │   ├── VLM_GSM8K_Benchmarking.ipynb
-├── rendered_images
+├── rendered_images/               # generated (ignored by git)
+├── render_samples/                # generated (ignored by git)
 ├── results/
 │   ├── Qwen2-VL-2B-Instruct/
 │   │   ├── gsm8k_vlm_results.csv
@@ -77,10 +81,38 @@ vlm-modality-research/
 
 ## How to Run
 
+### 1) Generate rendered GSM8K images (local)
+
+The notebooks expect GSM8K problem images to be named deterministically as:
+
+- `q0000.png`, `q0001.png`, … (full GSM8K test set)
+
+This repo includes a renderer script that generates:
+
+- `rendered_images/` (PNG images)
+- `gsm8k_metadata.csv` (id ↔ question ↔ answer ↔ image filename; useful for cloud inference)
+- `render_config.json` (full rendering protocol + provenance)
+- `render_samples/` (first 10 images for quick inspection/figures)
+
+Recommended setup (Windows PowerShell):
+
+```powershell
+py -m venv .venv
+.\.venv\Scripts\Activate.ps1
+python -m pip install --upgrade pip
+pip install -r requirements.txt
+python .\scripts\render_gsm8k.py
+```
+
+To make rendering strictly reproducible across machines for publication, add a font file at
+`assets/fonts/DejaVuSans.ttf` and set `REQUIRE_REPO_FONT = True` inside `scripts/render_gsm8k.py`.
+
+### 2) Run the evaluation notebooks (Colab)
+
 1. Open the relevant notebook in Google Colab
 2. Enable GPU: **Runtime → Change runtime type → T4 GPU**
 3. Upload your pre-rendered images to `/content/images/` in the Colab file browser
-4. Set `IMAGE_DIR = "/content/images"` in the config cell
+4. Set the image directory path in the notebook config (e.g. `IMAGE_DIR = "/content/images"`)
 5. Run all cells sequentially
 
 **Dependencies are installed automatically by the first cell.**
