@@ -25,6 +25,9 @@ Thumbs.db
 # Cursor
 .cursor/
 
+# Secrets
+.env
+
 # Logs
 *.log
 

@@ -6,6 +6,10 @@ import json
 import subprocess
 from tqdm import tqdm
 
+# Published rendered dataset (upload target / download source)
+HF_DATASET_REPO = "RodelaG/gsm8k-rendered-vlm"
+HF_DATASET_URL = f"https://huggingface.co/datasets/{HF_DATASET_REPO}"
+
 # -------------------
 # Load dataset
 # -------------------
@@ -185,6 +189,10 @@ except Exception:
     git_commit = None
 
 render_config = {
+    "huggingface_dataset": {
+        "repo_id": HF_DATASET_REPO,
+        "url": HF_DATASET_URL,
+    },
     "dataset": {
         "name": "openai/gsm8k",
         "config": "main",

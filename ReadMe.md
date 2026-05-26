@@ -15,6 +15,28 @@ This project investigates how input modality affects mathematical reasoning in v
 
 ---
 
+## Dataset
+
+### GSM8K (benchmark)
+
+Evaluations use the **GSM8K** grade-school math word-problem benchmark. Text and labels are loaded from Hugging Face as [`openai/gsm8k`](https://huggingface.co/datasets/openai/gsm8k) (config `main`, test split).
+
+### Rendered GSM8K images (Hugging Face)
+
+Pre-rendered GSM8K **test** images (full split), metadata, and rendering config are published here:
+
+**https://huggingface.co/datasets/RodelaG/gsm8k-rendered-vlm**
+
+| Artifact | Description |
+|----------|-------------|
+| `rendered_images/` | PNGs named `q0000.png` … `q1318.png` |
+| `gsm8k_metadata.csv` | Maps `id`, `question`, `answer`, and `image` filename |
+| `render_config.json` | Full rendering protocol and provenance |
+
+You can regenerate locally with `scripts/render_gsm8k.py`, or download from the Hub for notebook evaluation.
+
+---
+
 ## Models
 
 | Model | Size | Type |
@@ -81,7 +103,22 @@ vlm-modality-research/
 
 ## How to Run
 
-### 1) Generate rendered GSM8K images (local)
+### 1) Get rendered GSM8K images
+
+**Option A — Download from Hugging Face (recommended):**
+
+```python
+from huggingface_hub import snapshot_download
+
+snapshot_download(
+    repo_id="RodelaG/gsm8k-rendered-vlm",
+    repo_type="dataset",
+    local_dir="/content/gsm8k-rendered-vlm",
+)
+# Images: /content/gsm8k-rendered-vlm/rendered_images/q0000.png ...
+```
+
+**Option B — Generate locally** with `scripts/render_gsm8k.py` (see below).
 
 The notebooks expect GSM8K problem images to be named deterministically as:
 
@@ -111,8 +148,8 @@ To make rendering strictly reproducible across machines for publication, add a f
 
 1. Open the relevant notebook in Google Colab
 2. Enable GPU: **Runtime → Change runtime type → T4 GPU**
-3. Upload your pre-rendered images to `/content/images/` in the Colab file browser
-4. Set the image directory path in the notebook config (e.g. `IMAGE_DIR = "/content/images"`)
+3. Download images from [RodelaG/gsm8k-rendered-vlm](https://huggingface.co/datasets/RodelaG/gsm8k-rendered-vlm) (see Option A above), or upload your own
+4. Set the image directory path in the notebook config (e.g. `IMAGE_DIR = "/content/gsm8k-rendered-vlm/rendered_images"`)
 5. Run all cells sequentially
 
 **Dependencies are installed automatically by the first cell.**
