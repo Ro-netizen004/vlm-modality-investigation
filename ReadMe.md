@@ -6,7 +6,7 @@ Presented at the **USF UR2PhD Symposium 2025** · [View Poster](poster/VLM_GSM8K
 
 ## Overview
 
-This project investigates how input modality affects mathematical reasoning in vision-language models (VLMs). Using 100 problems from the GSM8K benchmark, we evaluate two models across three controlled conditions — text-only, rendered image, and a novel modality mismatch condition — to isolate the effect of input format on reasoning performance.
+This project investigates how input modality affects mathematical reasoning in vision-language models (VLMs). Using 100 problems from the GSM8K benchmark, we evaluate a single VLM under different input configurations to isolate modality contribution, cross-modal interference, and dominance under conflict.
 
 **Key findings:**
 - Visual input causes substantial accuracy drops in both models (−25pp for Qwen2, −19pp for LLaVA)
@@ -37,7 +37,7 @@ Regenerate locally with `scripts/render_gsm8k.py`, or download from the Hub for 
 
 For release hygiene: keep dataset artifacts on Hugging Face (`RodelaG/gsm8k-rendered-vlm`) and keep this GitHub repo focused on code, notebooks, and documentation.
 
-### Dataset loader (`rendered_gsm8k/dataset.py`)
+### Dataset loader (`rendered_gsm8k/loader.py`)
 
 This file is the **reproducibility API** for the rendered set—not training or rendering code. It:
 
@@ -67,11 +67,14 @@ test = ds["test"]
 
 ## Experimental Conditions
 
-| Condition | Input | Vision Encoder |
-|-----------|-------|----------------|
-| 1 — Text-Only | Raw problem text | Disabled |
-| 2 — Rendered Image | Clean PIL-rendered PNG | Enabled |
-| 3 — Modality Mismatch | Image of problem i + text of problem i+1 | Enabled |
+This design uses a single VLM under different input configurations (vision-disabled, image-only, aligned multimodal, and mismatched inputs) to measure how modality structure affects reasoning and which signal dominates under conflict.
+
+| Condition | Input | Vision Path |
+|-----------|-------|-------------|
+| 1 — Vision-Disabled VLM | Raw problem text only | Disabled |
+| 2 — Image-Only | Clean PIL-rendered PNG only | Enabled |
+| 3 — Aligned Multimodal | Matched text + rendered image | Enabled |
+| 4 — Modality Mismatch | Image of problem i + text of problem i+1 | Enabled |
 
 ---
 
