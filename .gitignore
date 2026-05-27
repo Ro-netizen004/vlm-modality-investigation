@@ -36,6 +36,10 @@ vlm_benchmark_outputs/
 rendered_images/
 
 # Generated metadata/artifacts
-gsm8k_metadata.csv
-render_progress.json
+gsm8k_metadata*.csv
 render_config.json
+render_progress.json
+render_samples/
+data/gsm8k_metadata*.csv
+data/render_config.json
+data/render_progress.json

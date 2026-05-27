@@ -30,10 +30,29 @@ Pre-rendered GSM8K **test** images (full split), metadata, and rendering config 
 | Artifact | Description |
 |----------|-------------|
 | `rendered_images/` | PNGs named `q0000.png` … `q1318.png` |
-| `gsm8k_metadata.csv` | Maps `id`, `question`, `answer`, and `image` filename |
-| `render_config.json` | Full rendering protocol and provenance |
+| `data/gsm8k_metadata_clean.csv` | Canonical metadata table (`id`, `question`, `answer`, `image`, `reasoning`) |
+| `data/render_config.json` | Full rendering protocol and provenance |
 
-You can regenerate locally with `scripts/render_gsm8k.py`, or download from the Hub for notebook evaluation.
+Regenerate locally with `scripts/render_gsm8k.py`, or download from the Hub for notebook evaluation.
+
+For release hygiene: keep dataset artifacts on Hugging Face (`RodelaG/gsm8k-rendered-vlm`) and keep this GitHub repo focused on code, notebooks, and documentation.
+
+### Dataset loader (`rendered_gsm8k/dataset.py`)
+
+This file is the **reproducibility API** for the rendered set—not training or rendering code. It:
+
+1. Reads `data/gsm8k_metadata_clean.csv` and checks `id` is 0…N-1 (GSM8K test order)
+2. Verifies every PNG in `rendered_images/` exists
+3. Returns a Hugging Face `DatasetDict` with a single **`test`** split
+
+```python
+from rendered_gsm8k import download_from_hub, load_rendered_gsm8k
+
+data_dir = download_from_hub()   # or a local path after snapshot_download / render
+ds = load_rendered_gsm8k(data_dir)
+test = ds["test"]
+# test[i]["image"], test[i]["question"], test[i]["answer"]
+```
 
 ---
 
@@ -80,12 +99,19 @@ You can regenerate locally with `scripts/render_gsm8k.py`, or download from the 
 vlm-modality-research/
 ├── README.md
 ├── requirements.txt
+├── docs/
+│   └── DATASET_README.md
+├── data/                          # generated metadata/configs (ignored by git)
+│   ├── gsm8k_metadata_clean.csv
+│   └── render_config.json
 ├── scripts/
-│   └── render_gsm8k.py
+│   ├── render_gsm8k.py
+│   └── fix_paths.py
+├── rendered_gsm8k/                # Dataset loader (test split only)
+│   └── dataset.py
 ├── notebooks/
 │   ├── VLM_GSM8K_Benchmarking.ipynb
 ├── rendered_images/               # generated (ignored by git)
-├── render_samples/                # generated (ignored by git)
 ├── results/
 │   ├── Qwen2-VL-2B-Instruct/
 │   │   ├── gsm8k_vlm_results.csv
@@ -127,9 +153,9 @@ The notebooks expect GSM8K problem images to be named deterministically as:
 This repo includes a renderer script that generates:
 
 - `rendered_images/` (PNG images)
-- `gsm8k_metadata.csv` (id ↔ question ↔ answer ↔ image filename; useful for cloud inference)
-- `render_config.json` (full rendering protocol + provenance)
-- `render_samples/` (first 10 images for quick inspection/figures)
+- `data/gsm8k_metadata.csv` (raw metadata from rendering)
+- `data/gsm8k_metadata_clean.csv` (canonical metadata for release/evaluation)
+- `data/render_config.json` (full rendering protocol + provenance)
 
 Recommended setup (Windows PowerShell):
 
@@ -141,8 +167,7 @@ pip install -r requirements.txt
 python .\scripts\render_gsm8k.py
 ```
 
-To make rendering strictly reproducible across machines for publication, add a font file at
-`assets/fonts/DejaVuSans.ttf` and set `REQUIRE_REPO_FONT = True` inside `scripts/render_gsm8k.py`.
+For publication reproducibility, keep `data/render_config.json` together with the released metadata and images.
 
 ### 2) Run the evaluation notebooks (Colab)
 

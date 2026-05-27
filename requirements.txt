@@ -3,3 +3,4 @@ pyarrow
 pillow
 pandas
 tqdm
+huggingface_hub
