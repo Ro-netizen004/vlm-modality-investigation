@@ -60,7 +60,7 @@ def run_inference(processor, model, question: str | None, image, cfg: dict) -> s
     mode = cfg["experiment_mode"]
     family = getattr(model, "_vlm_family", None)
     if family is None:
-        raise ValueError("Loaded model missing _vlm_family; use load_model() from gsm8k_experiment.models.")
+        raise ValueError("Loaded model missing _vlm_family; use load_model() from vlm_benchmark.models.")
     adapter = _get_adapter_by_family(family)
     prompt = build_prompt(adapter.family, question, mode)
     formatted = adapter.format_input(processor=processor, model=model, prompt=prompt, image=image, mode=mode)

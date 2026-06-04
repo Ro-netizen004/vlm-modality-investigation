@@ -19,23 +19,45 @@ BenchmarkSample(
 
 ## Adding a dataset
 
-1. Create `gsm8k_experiment/datasets/mydata.py` implementing `load(cfg) -> list[BenchmarkSample]`.
+1. Create `vlm_benchmark/datasets/mydata.py` implementing `load(cfg) -> list[BenchmarkSample]`.
 2. Call `register_adapter(MyAdapter())` at module bottom.
-3. Import the module in `gsm8k_experiment/datasets/__init__.py`.
+3. Import the module in `vlm_benchmark/datasets/__init__.py`.
 4. Add an `AnswerStrategy` in `answer_parsing.py` (or register in `_STRATEGIES`).
-5. Run with `--dataset-type mydata`.
+5. Run with `--dataset-type mydata`:
+
+```bash
+python scripts/run_benchmark.py --dataset-type mydata --mode text_only
+```
+
+(`scripts/run_gsm8k_benchmark.py` is a deprecated CLI alias. `import gsm8k_experiment` is a deprecated package alias for `vlm_benchmark`.)
 
 ## Model adapter layout
 
-Model wrappers now live in `gsm8k_experiment/models/`:
+Model wrappers now live in `vlm_benchmark/models/`:
 
 - `llava.py`
 - `qwen.py`
 - `minicpm.py`
 - `internvl.py`
 
-The shared registry and prompt builder live in `gsm8k_experiment/models/__init__.py` and `gsm8k_experiment/models/base.py`.
-The main loop is in `gsm8k_experiment/experiments/runner.py`.
+The shared registry and prompt builder live in `vlm_benchmark/models/__init__.py` and `vlm_benchmark/models/base.py`.
+The main loop is in `vlm_benchmark/experiments/runner.py`.
+
+## Paired significance (McNemar)
+
+After two runs on the **same** `problem_id` set (e.g. vision-disabled vs image-only):
+
+```bash
+python scripts/compare_mcnemar.py results/run_a_results.csv --col-a correct --csv-b results/run_b_results.csv --col-b correct
+```
+
+Legacy wide CSV (one file, two conditions):
+
+```bash
+python scripts/compare_mcnemar.py results/LLaVA-1.6/gsm8k_llava16_results.csv --col-a correct_text --col-b correct_rendered --label-a text --label-b image
+```
+
+Implementation: `vlm_benchmark/stats.py`.
 
 ## Config keys
 

@@ -1,4 +1,4 @@
-"""Backward-compatible dataset loading (prefer gsm8k_experiment.datasets.load_dataset)."""
+"""Backward-compatible dataset loading (prefer vlm_benchmark.datasets.load_dataset)."""
 
 from __future__ import annotations
 

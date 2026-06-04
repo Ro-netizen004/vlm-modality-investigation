@@ -107,8 +107,15 @@ vlm-modality-research/
 ├── data/                          # generated metadata/configs (ignored by git)
 │   ├── gsm8k_metadata_clean.csv
 │   └── render_config.json
+├── vlm_benchmark/                 # Benchmark framework (dataset-agnostic runner)
+│   ├── datasets/                  # gsm8k, svamp, …
+│   ├── models/                    # llava, qwen, minicpm, internvl
+│   └── experiments/runner.py
 ├── scripts/
-│   ├── render_gsm8k.py
+│   ├── run_benchmark.py           # Main CLI (use --dataset-type)
+│   ├── run_gsm8k_benchmark.py     # Deprecated alias
+│   ├── compare_mcnemar.py
+│   ├── render_gsm8k.py            # GSM8K images only
 │   └── fix_paths.py
 ├── rendered_gsm8k/                # Dataset loader (test split only)
 │   └── dataset.py
@@ -172,7 +179,21 @@ python .\scripts\render_gsm8k.py
 
 For publication reproducibility, keep `data/render_config.json` together with the released metadata and images.
 
-### 2) Run the evaluation notebooks (Colab)
+### 2) Run the modular benchmark (recommended)
+
+```powershell
+pip install -r requirements-experiment.txt
+python scripts/run_benchmark.py --dataset-type gsm8k --mode text_and_image --num-problems 100
+python scripts/run_benchmark.py --dataset-type svamp --mode text_only --num-problems 50
+```
+
+McNemar test (paired conditions, same `problem_id`s):
+
+```powershell
+python scripts/compare_mcnemar.py results/run_a_results.csv --col-a correct --csv-b results/run_b_results.csv --col-b correct
+```
+
+### 3) Legacy Colab notebooks
 
 1. Open the relevant notebook in Google Colab
 2. Enable GPU: **Runtime → Change runtime type → T4 GPU**
@@ -205,7 +226,7 @@ For publication reproducibility, keep `data/render_config.json` together with th
 ## Future Work
 
 - Scale to the full GSM8K test set for statistical reliability
-- Add significance testing (McNemar's test, chi-squared)
+- Expand significance testing beyond McNemar (bootstrap CIs, multi-condition tables)
 - Evaluate frontier models (GPT-4o, Gemini 2.0) to assess whether text dominance persists at scale
 - Implement screenshot condition with controlled noise levels
 - Test on additional benchmarks (SVAMP, AQuA-RAT)
