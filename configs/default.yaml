@@ -1,0 +1,111 @@
+# ── VLM Modality Research Configuration ──────────────────────────────────────
+# All models are 100% FREE, open-source, and fit on Colab T4 (16GB) / Kaggle P100
+# Total cost: $0.00
+
+dataset:
+  name: gsm8k
+  config: main
+  split: test
+  num_problems: null  # null = full test set (1319), or integer for quick test
+
+# ── Benchmarks ──────────────────────────────────────────────────────────────
+# Protocol A: text-based math (render as images for Condition 2)
+# Protocol B: visual benchmarks (native images, compare multimodal vs text-only)
+
+benchmarks:
+  # Protocol A — text math
+  gsm8k:     {protocol: A, source: "gsm8k/main",               split: test, size: 1319}
+  svamp:     {protocol: A, source: "ChilleD/SVAMP",             split: test, size: 1000}
+  aqua_rat:  {protocol: A, source: "deepmind/aqua_rat",         split: test, size: 254}
+  math:      {protocol: A, source: "hendrycks/competition_math", split: test, size: 5000}
+
+  # Protocol B — visual reasoning
+  mathvista: {protocol: B, source: "AI4Math/MathVista",          split: testmini, size: 1000}
+  scienceqa: {protocol: B, source: "derek-thomas/ScienceQA",     split: test, size: 4241}
+  ai2d:      {protocol: B, source: "lmms-lab/ai2d",              split: test, size: 4903}
+  chartqa:   {protocol: B, source: "lmms-lab/ChartQA",           split: test, size: 2500}
+
+# ── Model Registry ────────────────────────────────────────────────────────────
+# Run all models sequentially — GPU memory freed between runs.
+# Estimated total runtime: ~16-20 hours on T4 (split across Colab/Kaggle sessions).
+#
+# Strategy: Run 2-3 models per Colab session (12hr limit), save results,
+#           continue in next session. Or use Kaggle (30hr/week GPU quota).
+
+models:
+  # ── TIER 1: Already benchmarked (original study) ──────────────────────────
+
+  - name: Qwen/Qwen2-VL-2B-Instruct
+    type: qwen
+    max_new_tokens: 256
+    torch_dtype: bfloat16
+    quantize: null            # Small enough to run in bf16
+    vram_estimate: 5GB
+
+  - name: llava-hf/llava-v1.6-mistral-7b-hf
+    type: llava
+    max_new_tokens: 512
+    torch_dtype: float16
+    quantize: 4bit
+    vram_estimate: 5GB
+
+  # ── TIER 2: Stronger 7-8B models ─────────────────────────────────────────
+
+  - name: Qwen/Qwen2.5-VL-7B-Instruct
+    type: qwen
+    max_new_tokens: 512
+    torch_dtype: bfloat16
+    quantize: 4bit
+    vram_estimate: 6GB
+
+  - name: OpenGVLab/InternVL2-8B
+    type: internvl
+    max_new_tokens: 512
+    torch_dtype: bfloat16
+    quantize: 4bit
+    vram_estimate: 6GB
+
+  - name: llava-hf/llava-onevision-qwen2-7b-ov-hf
+    type: llava_onevision
+    max_new_tokens: 512
+    torch_dtype: float16
+    quantize: 4bit
+    vram_estimate: 5GB
+
+  # ── TIER 3: Different architectures ───────────────────────────────────────
+
+  - name: microsoft/Phi-3.5-vision-instruct
+    type: phi
+    max_new_tokens: 512
+    torch_dtype: bfloat16
+    quantize: 4bit
+    vram_estimate: 4GB
+
+  - name: openbmb/MiniCPM-V-2_6
+    type: minicpm
+    max_new_tokens: 512
+    torch_dtype: bfloat16
+    quantize: 4bit
+    vram_estimate: 6GB
+
+  - name: HuggingFaceM4/Idefics3-8B-Llama3
+    type: idefics
+    max_new_tokens: 512
+    torch_dtype: bfloat16
+    quantize: 4bit
+    vram_estimate: 6GB
+
+image_rendering:
+  width: 900
+  font_size: 22
+  padding: 40
+  bg_color: white
+  text_color: black
+
+conditions:
+  - text_only
+  - rendered_image
+  - mismatch
+
+output_dir: results
+seed: 42
