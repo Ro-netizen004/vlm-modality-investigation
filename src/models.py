@@ -104,7 +104,7 @@ class VLMModel:
 
     def _load_qwen(self):
         """Qwen2-VL and Qwen2.5-VL models."""
-        from transformers import AutoProcessor, AutoModelForVision2Seq
+        from transformers import AutoProcessor, AutoModelForImageTextToText
 
         self.processor = AutoProcessor.from_pretrained(
             self.model_name, trust_remote_code=True, use_fast=False,
@@ -113,7 +113,7 @@ class VLMModel:
         kwargs = {"device_map": "auto", "torch_dtype": self.dtype, "trust_remote_code": True}
         if quant_config:
             kwargs["quantization_config"] = quant_config
-        self.model = AutoModelForVision2Seq.from_pretrained(self.model_name, **kwargs)
+        self.model = AutoModelForImageTextToText.from_pretrained(self.model_name, **kwargs)
         self.model.eval()
 
     def _load_llava(self):
