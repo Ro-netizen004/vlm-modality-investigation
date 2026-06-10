@@ -10,3 +10,6 @@ Pillow
 tqdm
 pyyaml
 bitsandbytes
+pyarrow
+huggingface_hub
+torchvision
