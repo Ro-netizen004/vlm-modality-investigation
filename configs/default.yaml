@@ -3,7 +3,7 @@
 # Total cost: $0.00
 
 dataset:
-  name: gsm8k
+  name: openai/gsm8k
   config: main
   split: test
   num_problems: null  # null = full test set (1319), or integer for quick test
@@ -14,7 +14,7 @@ dataset:
 
 benchmarks:
   # Protocol A — text math
-  gsm8k:     {protocol: A, source: "gsm8k/main",               split: test, size: 1319}
+  gsm8k:     {protocol: A, source: "openai/gsm8k",               split: test, size: 1319}
   svamp:     {protocol: A, source: "ChilleD/SVAMP",             split: test, size: 1000}
   aqua_rat:  {protocol: A, source: "deepmind/aqua_rat",         split: test, size: 254}
   math:      {protocol: A, source: "hendrycks/competition_math", split: test, size: 5000}

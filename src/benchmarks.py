@@ -72,7 +72,7 @@ def extract_number_from_answer(text: str) -> Optional[float]:
 
 def load_gsm8k(num_problems=None) -> List[BenchmarkItem]:
     """GSM8K — grade-school math word problems."""
-    ds = load_dataset("gsm8k", "main", split="test")
+    ds = load_dataset("openai/gsm8k", "main", split="test")
     if num_problems:
         ds = ds.select(range(min(num_problems, len(ds))))
 
