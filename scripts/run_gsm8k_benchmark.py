@@ -1,5 +1,8 @@
 #!/usr/bin/env python3
-"""Deprecated alias — use scripts/run_benchmark.py instead."""
+"""Deprecated alias — forwards to scripts/run_benchmark.py (src/ pipeline).
+
+For the old vlm_benchmark CLI (--dataset-type, --mode), see vlm_benchmark/README.md.
+"""
 
 from __future__ import annotations
 
@@ -9,7 +12,8 @@ import warnings
 from pathlib import Path
 
 warnings.warn(
-    "scripts/run_gsm8k_benchmark.py is deprecated; use scripts/run_benchmark.py",
+    "run_gsm8k_benchmark.py forwards to run_benchmark.py (src/). "
+    "Legacy vlm_benchmark: see vlm_benchmark/README.md and docs/GETTING_STARTED.md",
     DeprecationWarning,
     stacklevel=1,
 )

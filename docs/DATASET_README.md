@@ -1,5 +1,14 @@
 # Rendered GSM8K-VL Dataset
 
+> **Which dataset?**  
+> - **v1 (symposium pilot)** — this page, [RodelaG/gsm8k-rendered-vlm](https://huggingface.co/datasets/RodelaG/gsm8k-rendered-vlm)  
+> - **v2 (full study)** — team Drive `rendered_images/` → HF upload TBD; see [`CANONICAL.md`](CANONICAL.md)  
+> **Do not mix v1 and v2 in one results table.**
+
+---
+
+## v1 — Symposium pilot (documented below)
+
 Rendered GSM8K-VL is a multimodal math-reasoning dataset for vision-language model evaluation.  
 Each example links:
 

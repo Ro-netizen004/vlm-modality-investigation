@@ -1,78 +1,68 @@
-# VLM benchmark framework
+# Framework overview
 
-Dataset-agnostic experiment layer for modality ablations on math word problems.
+> **New here?** Read [`GETTING_STARTED.md`](GETTING_STARTED.md) first.  
+> **Full reference:** [`CANONICAL.md`](CANONICAL.md)
 
-Paper wording note: the "text_only" condition is a vision-disabled VLM condition (not a separate text-only model family).
+This repo has **two** experiment stacks. Only one is current.
 
-## Canonical sample
+| | **Current (`src/`)** | **Legacy (`vlm_benchmark/`)** |
+|--|----------------------|-------------------------------|
+| **Use for** | Phase 1–6, full paper | Symposium pilot reproduction |
+| **Entry** | `Run_All_Models_Free.ipynb`, `scripts/run_benchmark.py` | Package API only (CLI flags removed) |
+| **Images** | v2 (900px, Drive / HF v2) | v1 ([gsm8k-rendered-vlm](https://huggingface.co/datasets/RodelaG/gsm8k-rendered-vlm)) |
+| **GSM8K conditions** | 3 (text, image, mismatch) | 4 (+ aligned text+image) |
+| **Docs** | [`src/README.md`](../src/README.md) | [`vlm_benchmark/README.md`](../vlm_benchmark/README.md) |
 
-Every adapter returns:
+**Do not add a third stack.** Extend `src/` or explicitly revive legacy with team agreement.
+
+---
+
+## Current stack (`src/`)
+
+```
+configs/default.yaml
+    → scripts/run_benchmark.py  OR  notebooks/Run_All_Models_Free.ipynb
+    → src/models.VLMModel
+    → src/evaluation.py (McNemar, bootstrap CI, Cohen's h)
+    → results on Google Drive or local results/
+```
+
+Multi-benchmark: `scripts/run_multi_benchmark.py` → `src/benchmark_eval.py` (Protocol A/B).
+
+Extensions: `src/noise.py`, `src/prompts.py`, `src/error_analysis.py`, `src/mechanistic.py`.
+
+---
+
+## Legacy stack (`vlm_benchmark/`)
+
+Dataset-agnostic adapters and a 4-mode runner used for the **2025 symposium** (n=100, v1 images).
+
+Paper wording: `text_only` is vision-disabled VLM inference, not a separate text-only model family.
+
+### Legacy sample type
 
 ```python
-BenchmarkSample(
-    question=str,
-    answer=str,
-    image=PIL.Image | None,
-    metadata=dict,  # optional id, reasoning, equation, …
-)
+BenchmarkSample(question=str, answer=str, image=PIL.Image | None, metadata=dict)
 ```
 
-## Adding a dataset
-
-1. Create `vlm_benchmark/datasets/mydata.py` implementing `load(cfg) -> list[BenchmarkSample]`.
-2. Call `register_adapter(MyAdapter())` at module bottom.
-3. Import the module in `vlm_benchmark/datasets/__init__.py`.
-4. Add an `AnswerStrategy` in `answer_parsing.py` (or register in `_STRATEGIES`).
-5. Run with `--dataset-type mydata`:
+### Legacy McNemar CLI (still works)
 
 ```bash
-python scripts/run_benchmark.py --dataset-type mydata --mode text_only
+python scripts/compare_mcnemar.py results/a.csv --col-a correct --csv-b results/b.csv --col-b correct
 ```
 
-(`scripts/run_gsm8k_benchmark.py` is a deprecated CLI alias. `import gsm8k_experiment` is a deprecated package alias for `vlm_benchmark`.)
+Uses `vlm_benchmark/stats.py`. Phase 1 wide CSVs may use `correct_text` / `correct_rendered` column names instead.
 
-## Model adapter layout
+---
 
-Model wrappers now live in `vlm_benchmark/models/`:
+## Adding a new dataset
 
-- `llava.py`
-- `qwen.py`
-- `minicpm.py`
-- `internvl.py`
+**Current path:** register in `src/benchmarks.py`, evaluate via `src/benchmark_eval.py`.
 
-The shared registry and prompt builder live in `vlm_benchmark/models/__init__.py` and `vlm_benchmark/models/base.py`.
-The main loop is in `vlm_benchmark/experiments/runner.py`.
+**Legacy path:** `vlm_benchmark/datasets/` + `answer_parsing.py` — only if maintaining pilot stack.
 
-## Paired significance (McNemar)
+---
 
-After two runs on the **same** `problem_id` set (e.g. vision-disabled vs image-only):
+## AI-assisted development
 
-```bash
-python scripts/compare_mcnemar.py results/run_a_results.csv --col-a correct --csv-b results/run_b_results.csv --col-b correct
-```
-
-Legacy wide CSV (one file, two conditions):
-
-```bash
-python scripts/compare_mcnemar.py results/LLaVA-1.6/gsm8k_llava16_results.csv --col-a correct_text --col-b correct_rendered --label-a text --label-b image
-```
-
-Implementation: `vlm_benchmark/stats.py`.
-
-## Config keys
-
-| Key | Purpose |
-|-----|---------|
-| `dataset_type` | Adapter + answer parser (`gsm8k`, `svamp`, …) |
-| `metadata_csv` | GSM8K local metadata (optional) |
-| `image_root` | Root for relative image paths |
-| `hf_dataset_id` | Hugging Face repo when loading from Hub |
-| `num_problems` | Subsample size (`None` = all) |
-
-## GSM8K vs SVAMP today
-
-| | GSM8K | SVAMP |
-|---|--------|--------|
-| Images | `rendered_images/` via metadata CSV | None (text-only until rendered) |
-| Answer format | `#### <n>` + integer match | Plain numeric string |
-| Paper conditions | text / image / mismatch | text_only ready |
+Read [`CLAUDE.md`](../CLAUDE.md) before codegen. Update this file when architecture changes.

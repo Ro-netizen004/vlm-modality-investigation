@@ -83,8 +83,7 @@ vlm_research_results/          # Google Drive
 
 ---
 
-## Planned doc debt
+## Doc maintenance
 
-- [ ] `ReadMe.md` — still describes old `vlm_benchmark` CLI  
-- [ ] `docs/FRAMEWORK.md` — still describes `vlm_benchmark` only  
-- [ ] HF v2 dataset URL — fill in after upload  
+- [x] `ReadMe.md`, `FRAMEWORK.md`, `GETTING_STARTED.md` — aligned with current vs legacy  
+- [ ] HF v2 dataset URL — fill in after Drive upload  
