@@ -6,6 +6,7 @@
 | **`run_multi_benchmark.py`** | **Current** | 8 benchmarks, Protocol A/B |
 | **`compare_mcnemar.py`** | **Current** | Paired significance (uses `vlm_benchmark.stats`) |
 | `render_gsm8k.py` | Legacy | Generate **v1** images for HF symposium dataset |
+| `prepare_hf_v2_release.py` | **Release** | Bundle Drive images + metadata for HF v2 upload |
 | `fix_paths.py` | Utility | Metadata path cleanup |
 | `run_gsm8k_benchmark.py` | Deprecated | Forwards to `run_benchmark.py` |
 

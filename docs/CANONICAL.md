@@ -47,9 +47,9 @@ The CLI flags above **do not work** on current `scripts/run_benchmark.py` (it wa
 
 ### v2 — full study (Phase 1)
 
-- **Hub:** TBD after team uploads Drive folder
+- **Hub:** [RodelaG/gsm8k-rendered-vlm-v2](https://huggingface.co/datasets/RodelaG/gsm8k-rendered-vlm-v2)
 - **Renderer:** `src/rendering.py` (`render_text_to_image`)
-- **Width:** 900px | **Prefix:** none | **Names:** `q000.png` (3-digit)
+- **Width:** 900px | **Prefix:** none | **Names:** `q000.png` … `q999.png`, `q1000.png` … `q1318.png`
 - **Source of truth until HF upload:** Google Drive `vlm_research_results/rendered_images/`
 
 **Do not compare v1 and v2 numbers as the same experiment.**
@@ -86,4 +86,5 @@ vlm_research_results/          # Google Drive
 ## Doc maintenance
 
 - [x] `ReadMe.md`, `FRAMEWORK.md`, `GETTING_STARTED.md` — aligned with current vs legacy  
-- [ ] HF v2 dataset URL — fill in after Drive upload  
+- [x] HF v2 dataset — [RodelaG/gsm8k-rendered-vlm-v2](https://huggingface.co/datasets/RodelaG/gsm8k-rendered-vlm-v2)  
+- [x] HF dataset README — published on Hub  
