@@ -2,6 +2,8 @@
 
 Presented at the **USF UR2PhD Symposium 2025** · [View Poster](poster/VLM_GSM8K_Poster.pdf)
 
+> **Contributors & AI tools:** Read [`CLAUDE.md`](CLAUDE.md) and [`docs/CANONICAL.md`](docs/CANONICAL.md) before changing code. These define the canonical pipeline, image datasets, and what not to duplicate.
+
 ---
 
 ## Overview
