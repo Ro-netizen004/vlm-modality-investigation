@@ -72,7 +72,7 @@ For reproducing the **2025 poster** (n=100, different images):
 | Images | [RodelaG/gsm8k-rendered-vlm](https://huggingface.co/datasets/RodelaG/gsm8k-rendered-vlm) (v1) |
 | Renderer | `scripts/render_gsm8k.py` |
 | Package | `vlm_benchmark/` — see [`vlm_benchmark/README.md`](../vlm_benchmark/README.md) |
-| Old notebooks | `VLM_GSM8K_Benchmarking.ipynb` — **deprecated** |
+| Old notebooks | `notebooks/deprecated/` — **deprecated** |
 
 The old CLI (`--dataset-type gsm8k --mode text_and_image`) is **not** wired to `scripts/run_benchmark.py` on current `main`. Use legacy package directly or ask before reviving.
 

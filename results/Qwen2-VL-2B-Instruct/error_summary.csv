@@ -1,3 +1,0 @@
-Condition,N,correct,correct_%,arithmetic_error,arithmetic_error_%,reasoning_error,reasoning_error_%,no_number,no_number_%,vision_error,vision_error_%
-Text-Only,100,55,55.0%,45,45.0%,0,0.0%,0,0.0%,0,0.0%
-Rendered,100,30,30.0%,68,68.0%,2,2.0%,0,0.0%,0,0.0%

@@ -50,5 +50,5 @@ Run the **Cross-Model Comparison** cells at the bottom of the notebook.
 
 ## Not this
 
-- Old `VLM_GSM8K_Benchmarking.ipynb` — deprecated
+- `notebooks/deprecated/` — old symposium notebooks
 - HF v1 `gsm8k-rendered-vlm` — symposium pilot only, not Phase 1 images

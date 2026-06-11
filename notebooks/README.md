@@ -20,10 +20,6 @@ Open from GitHub: `https://github.com/Ro-netizen004/vlm-modality-research`
 
 ## Deprecated (do not use for new work)
 
-| Notebook | Why |
-|----------|-----|
-| `VLM_GSM8K_Benchmarking.ipynb` | Monolithic pre-`src/` workflow |
-| `LLaVA16_GSM8K_Benchmarking.ipynb` | Same |
-| `analyze_results.ipynb` | Expects old `vlm_benchmark` CSV layout |
+Moved to [`deprecated/`](deprecated/README.md) — symposium pilot notebooks only.
 
 See [`docs/GETTING_STARTED.md`](../docs/GETTING_STARTED.md).
