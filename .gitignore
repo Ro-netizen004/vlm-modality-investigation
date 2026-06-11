@@ -39,6 +39,9 @@ rendered_images/
 results/**
 !results/README.md
 
+# HF v2 upload staging (large; publish to Hub, do not commit)
+hf_gsm8k_v2_upload/
+
 # Generated metadata/artifacts
 gsm8k_metadata*.csv
 render_config.json

@@ -47,7 +47,7 @@ python scripts/run_multi_benchmark.py --benchmarks gsm8k,svamp --num-problems 50
 | Source | When |
 |--------|------|
 | Drive `vlm_research_results/rendered_images/` | During Colab Phase 1 (team shared folder) |
-| Hugging Face v2 | After team upload (URL in `docs/CANONICAL.md`) |
+| Hugging Face v2 | [RodelaG/gsm8k-rendered-vlm-v2](https://huggingface.co/datasets/RodelaG/gsm8k-rendered-vlm-v2) |
 
 **Do not** use v1 images for Phase 1 numbers. **Do not** mix v1 and v2 in one table.
 

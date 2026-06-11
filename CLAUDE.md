@@ -31,7 +31,7 @@ Two datasets exist; **never mix them in one results table**:
 | Dataset | Hub ID | Protocol |
 |---------|--------|----------|
 | **v1 (symposium pilot)** | `RodelaG/gsm8k-rendered-vlm` | 672px, `"Solve this step-by-step"` prefix, `q0000.png` |
-| **v2 (full study)** | Upload TBD — see `docs/CANONICAL.md` | 900px, raw question, `q000.png`, `src/rendering.py` |
+| **v2 (full study)** | [RodelaG/gsm8k-rendered-vlm-v2](https://huggingface.co/datasets/RodelaG/gsm8k-rendered-vlm-v2) | 900px, raw question, `src/rendering.py` |
 
 **Rules:**
 
