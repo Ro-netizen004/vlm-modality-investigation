@@ -67,7 +67,7 @@ Aligned `text_and_image` exists only in `vlm_benchmark/experiments/runner.py` �
 | `Noise_Ablation.ipynb` | Phase 4 |
 | `Prompt_Sensitivity.ipynb` | Phase 5 |
 | `Mechanistic_Analysis.ipynb` | Phase 6 (appendix) |
-| `VLM_GSM8K_Benchmarking.ipynb` | **Deprecated** — do not extend |
+| `notebooks/deprecated/*.ipynb` | **Deprecated** — do not extend |
 
 ## Reproducibility checklist (new runs)
 

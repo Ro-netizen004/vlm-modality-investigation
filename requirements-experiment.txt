@@ -1,8 +1,0 @@
--r requirements.txt
-torch
-transformers>=4.39.0
-accelerate
-bitsandbytes
-matplotlib
-scipy
-pandas
