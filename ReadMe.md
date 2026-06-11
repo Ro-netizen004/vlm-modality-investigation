@@ -2,85 +2,142 @@
 
 Presented at the **USF UR2PhD Symposium 2025** · [View Poster](poster/VLM_GSM8K_Poster.pdf)
 
-> **Contributors & AI tools:** Read [`CLAUDE.md`](CLAUDE.md) and [`docs/CANONICAL.md`](docs/CANONICAL.md) before changing code. These define the canonical pipeline, image datasets, and what not to duplicate.
+---
+
+## Start here
+
+**Confused by two folders (`src/` vs `vlm_benchmark/`)?**  
+→ **[`docs/GETTING_STARTED.md`](docs/GETTING_STARTED.md)** — which version to use, in one page.
+
+| I want to… | Go to |
+|------------|-------|
+| Run Phase 1 on Colab (8 models, n=1319) | [`notebooks/Run_All_Models_Free.ipynb`](notebooks/Run_All_Models_Free.ipynb) + [`docs/COLAB.md`](docs/COLAB.md) |
+| Understand architecture | [`docs/CANONICAL.md`](docs/CANONICAL.md) |
+| Code with AI / avoid duplicate pipelines | [`CLAUDE.md`](CLAUDE.md) |
+| Reproduce 2025 symposium pilot only | [`vlm_benchmark/README.md`](vlm_benchmark/README.md) + HF v1 dataset |
+
+**Contributors:** `git pull` before coding. Do not create parallel experiment frameworks.
+
+---
+
+## Project status
+
+| Track | Status | Images | Scale |
+|-------|--------|--------|-------|
+| **Full study (current)** | Phase 1 in progress | **v2** — Drive → HF upload | n=1319, 8 models |
+| **Symposium pilot (legacy)** | Complete — poster | **v1** — [HF dataset](https://huggingface.co/datasets/RodelaG/gsm8k-rendered-vlm) | n=100, 2 models |
+
+**Do not mix v1 and v2 results in the same table.**
 
 ---
 
 ## Overview
 
-This project investigates how input modality affects mathematical reasoning in vision-language models (VLMs). Using 100 problems from the GSM8K benchmark, we evaluate a single VLM under different input configurations to isolate modality contribution, cross-modal interference, and dominance under conflict.
+We study how **input modality** affects math reasoning in VLMs: same model, different inputs (text-only, rendered image, mismatch), measuring accuracy drops and text dominance under conflict.
 
-**Key findings:**
-- Visual input causes substantial accuracy drops in both models (−25pp for Qwen2, −19pp for LLaVA)
-- Arithmetic errors increase significantly under image input; vision/OCR errors remain negligible
-- In the mismatch condition, both models follow the text modality in over 75% of cases, revealing strong implicit text dominance
+### Symposium pilot findings (n=100, dataset v1)
+
+- Visual input drops accuracy (−25pp Qwen2-VL-2B, −19pp LLaVA-1.6)
+- Mismatch: models follow text in >75% of cases
+- See tables below — **pilot only**, not the full-scale study
+
+### Full study (current)
+
+- GSM8K test split (1319), McNemar + bootstrap CIs + Cohen's h
+- 8 open VLMs via Colab (`src/` pipeline)
+- See Google Drive `vlm_research_results/` for new numbers
 
 ---
 
-## Dataset
+## How to run (current)
 
-### GSM8K (benchmark)
+### Colab — Phase 1 (recommended)
 
-Evaluations use the **GSM8K** grade-school math word-problem benchmark. Text and labels are loaded from Hugging Face as [`openai/gsm8k`](https://huggingface.co/datasets/openai/gsm8k) (config `main`, test split).
+1. Open [`notebooks/Run_All_Models_Free.ipynb`](notebooks/Run_All_Models_Free.ipynb) on [Colab](https://colab.research.google.com) from GitHub
+2. **Runtime → T4 GPU**
+3. Mount Drive → `vlm_research_results/`
+4. Set `MODELS_TO_RUN` per session: `[0,1,2]` → `[3,4,5]` → `[6,7]`
 
-### Rendered GSM8K images (Hugging Face)
+Full steps: [`docs/COLAB.md`](docs/COLAB.md)
 
-Pre-rendered GSM8K **test** images (full split), metadata, and rendering config are published here:
+### CLI
+
+```bash
+pip install -r requirements.txt
+python scripts/run_benchmark.py --config configs/default.yaml --num-problems 10
+python scripts/run_multi_benchmark.py --benchmarks gsm8k,svamp --num-problems 50
+```
+
+### GSM8K conditions (current Phase 1)
+
+| Condition | Description |
+|-----------|-------------|
+| Text-only | Vision disabled, text prompt |
+| Rendered image | Image only (`src/rendering.py` protocol) |
+| Mismatch | Imageᵢ + textᵢ₊₁ |
+
+Aligned text+image exists only in legacy `vlm_benchmark/` (not Phase 1 notebook).
+
+### McNemar (paired conditions)
+
+```bash
+python scripts/compare_mcnemar.py results/a.csv --col-a correct_text --csv-b results/b.csv --col-b correct_rendered
+```
+
+---
+
+## Datasets
+
+### v2 — full study (current)
+
+- **Images:** `vlm_research_results/rendered_images/` on team Google Drive
+- **HF:** URL TBD after team upload (see [`docs/CANONICAL.md`](docs/CANONICAL.md))
+- **Renderer:** `src/rendering.py` — 900px, raw question, `q000.png` naming
+- **Labels:** `openai/gsm8k` test split
+
+### v1 — symposium pilot (legacy)
 
 **https://huggingface.co/datasets/RodelaG/gsm8k-rendered-vlm**
 
 | Artifact | Description |
 |----------|-------------|
-| `rendered_images/` | PNGs named `q0000.png` … `q1318.png` |
-| `data/gsm8k_metadata_clean.csv` | Canonical metadata table (`id`, `question`, `answer`, `image`, `reasoning`) |
-| `data/render_config.json` | Full rendering protocol and provenance |
+| `rendered_images/` | `q0000.png` … `q1318.png` |
+| `data/gsm8k_metadata_clean.csv` | Metadata |
+| `data/render_config.json` | 672px, "Solve this step-by-step" prefix |
 
-Regenerate locally with `scripts/render_gsm8k.py`, or download from the Hub for notebook evaluation.
+Regenerate: `python scripts/render_gsm8k.py` · Details: [`docs/DATASET_README.md`](docs/DATASET_README.md)
 
-For release hygiene: keep dataset artifacts on Hugging Face (`RodelaG/gsm8k-rendered-vlm`) and keep this GitHub repo focused on code, notebooks, and documentation.
+---
 
-### Dataset loader (`rendered_gsm8k/loader.py`)
+## Repository structure
 
-This file is the **reproducibility API** for the rendered set—not training or rendering code. It:
-
-1. Reads `data/gsm8k_metadata_clean.csv` and checks `id` is 0…N-1 (GSM8K test order)
-2. Verifies every PNG in `rendered_images/` exists
-3. Returns a Hugging Face `DatasetDict` with a single **`test`** split
-
-```python
-from rendered_gsm8k import download_from_hub, load_rendered_gsm8k
-
-data_dir = download_from_hub()   # or a local path after snapshot_download / render
-ds = load_rendered_gsm8k(data_dir)
-test = ds["test"]
-# test[i]["image"], test[i]["question"], test[i]["answer"]
+```
+vlm-modality-research/
+├── CLAUDE.md                 # AI assistant rules
+├── docs/
+│   ├── GETTING_STARTED.md    # ← read this if confused
+│   ├── CANONICAL.md          # architecture truth
+│   ├── COLAB.md
+│   ├── FRAMEWORK.md
+│   └── DATASET_README.md
+├── src/                      # CURRENT — models, eval, benchmarks
+├── configs/default.yaml      # CURRENT — 8 models, render settings
+├── notebooks/
+│   ├── Run_All_Models_Free.ipynb   # CURRENT — Phase 1
+│   └── README.md             # which notebook when
+├── scripts/
+│   ├── run_benchmark.py      # CURRENT — uses src/
+│   ├── run_multi_benchmark.py
+│   ├── compare_mcnemar.py
+│   └── render_gsm8k.py       # LEGACY — v1 images only
+├── vlm_benchmark/            # LEGACY — symposium package
+├── results/                  # Pilot CSVs (n=100) — do not mix with Drive
+└── poster/
 ```
 
 ---
 
-## Models
-
-| Model | Size | Type |
-|-------|------|------|
-| Qwen2-VL-2B-Instruct | 2B | Open-source, local |
-| LLaVA-v1.6-Mistral-7B | 7B | Open-source, local |
-
----
-
-## Experimental Conditions
-
-This design uses a single VLM under different input configurations (vision-disabled, image-only, aligned multimodal, and mismatched inputs) to measure how modality structure affects reasoning and which signal dominates under conflict.
-
-| Condition | Input | Vision Path |
-|-----------|-------|-------------|
-| 1 — Vision-Disabled VLM | Raw problem text only | Disabled |
-| 2 — Image-Only | Clean PIL-rendered PNG only | Enabled |
-| 3 — Aligned Multimodal | Matched text + rendered image | Enabled |
-| 4 — Modality Mismatch | Image of problem i + text of problem i+1 | Enabled |
-
----
-
-## Results
+## Pilot results (symposium, n=100, v1)
 
 **Table 1: Zero-Shot Accuracy**
 
@@ -89,7 +146,7 @@ This design uses a single VLM under different input configurations (vision-disab
 | Qwen2-VL-2B | 55% | 30% | −25pp |
 | LLaVA-1.6-7B | 40% | 21% | −19pp |
 
-**Table 2: Modality Preference Under Conflict (n=100)**
+**Table 2: Modality Preference Under Conflict**
 
 | Model | Follows Image | Follows Text | Equal |
 |-------|--------------|--------------|-------|
@@ -98,148 +155,11 @@ This design uses a single VLM under different input configurations (vision-disab
 
 ---
 
-## Repository Structure
-
-```
-vlm-modality-research/
-├── README.md
-├── requirements.txt
-├── docs/
-│   └── DATASET_README.md
-├── data/                          # generated metadata/configs (ignored by git)
-│   ├── gsm8k_metadata_clean.csv
-│   └── render_config.json
-├── vlm_benchmark/                 # Benchmark framework (dataset-agnostic runner)
-│   ├── datasets/                  # gsm8k, svamp, …
-│   ├── models/                    # llava, qwen, minicpm, internvl
-│   └── experiments/runner.py
-├── scripts/
-│   ├── run_benchmark.py           # Main CLI (use --dataset-type)
-│   ├── run_gsm8k_benchmark.py     # Deprecated alias
-│   ├── compare_mcnemar.py
-│   ├── render_gsm8k.py            # GSM8K images only
-│   └── fix_paths.py
-├── rendered_gsm8k/                # Dataset loader (test split only)
-│   └── dataset.py
-├── notebooks/
-│   ├── VLM_GSM8K_Benchmarking.ipynb
-├── rendered_images/               # generated (ignored by git)
-├── results/
-│   ├── Qwen2-VL-2B-Instruct/
-│   │   ├── gsm8k_vlm_results.csv
-│   │   ├── error_summary.csv
-│   │   └── mismatch_results.csv
-│   └── LLaVa_1.6/
-│       ├── gsm8k_vlm_results.csv
-│       ├── error_summary.csv
-│       └── mismatch_results.csv
-└── poster/
-    └── VLM_GSM8K_Poster.pdf
-```
-
----
-
-## How to Run
-
-### 1) Get rendered GSM8K images
-
-**Option A — Download from Hugging Face (recommended):**
-
-```python
-from huggingface_hub import snapshot_download
-
-snapshot_download(
-    repo_id="RodelaG/gsm8k-rendered-vlm",
-    repo_type="dataset",
-    local_dir="/content/gsm8k-rendered-vlm",
-)
-# Images: /content/gsm8k-rendered-vlm/rendered_images/q0000.png ...
-```
-
-**Option B — Generate locally** with `scripts/render_gsm8k.py` (see below).
-
-The notebooks expect GSM8K problem images to be named deterministically as:
-
-- `q0000.png`, `q0001.png`, … (full GSM8K test set)
-
-This repo includes a renderer script that generates:
-
-- `rendered_images/` (PNG images)
-- `data/gsm8k_metadata.csv` (raw metadata from rendering)
-- `data/gsm8k_metadata_clean.csv` (canonical metadata for release/evaluation)
-- `data/render_config.json` (full rendering protocol + provenance)
-
-Recommended setup (Windows PowerShell):
-
-```powershell
-py -m venv .venv
-.\.venv\Scripts\Activate.ps1
-python -m pip install --upgrade pip
-pip install -r requirements.txt
-python .\scripts\render_gsm8k.py
-```
-
-For publication reproducibility, keep `data/render_config.json` together with the released metadata and images.
-
-### 2) Run the modular benchmark (recommended)
-
-```powershell
-pip install -r requirements-experiment.txt
-python scripts/run_benchmark.py --dataset-type gsm8k --mode text_and_image --num-problems 100
-python scripts/run_benchmark.py --dataset-type svamp --mode text_only --num-problems 50
-```
-
-McNemar test (paired conditions, same `problem_id`s):
-
-```powershell
-python scripts/compare_mcnemar.py results/run_a_results.csv --col-a correct --csv-b results/run_b_results.csv --col-b correct
-```
-
-### 3) Legacy Colab notebooks
-
-1. Open the relevant notebook in Google Colab
-2. Enable GPU: **Runtime → Change runtime type → T4 GPU**
-3. Download images from [RodelaG/gsm8k-rendered-vlm](https://huggingface.co/datasets/RodelaG/gsm8k-rendered-vlm) (see Option A above), or upload your own
-4. Set the image directory path in the notebook config (e.g. `IMAGE_DIR = "/content/gsm8k-rendered-vlm/rendered_images"`)
-5. Run all cells sequentially
-
-**Dependencies are installed automatically by the first cell.**
-
----
-
 ## Evaluation
 
-- Numeric answer extracted using GSM8K canonical format (`#### <answer>`) with fallback to last number in output
-- Answers compared by rounding to nearest integer
-- Error classification: `correct`, `arithmetic_error`, `reasoning_error`, `no_number`, `vision_error`
-- Mismatch condition scored by absolute numeric distance to each modality's ground truth
-
----
-
-## Limitations
-
-- 100 problems is a small sample — findings are indicative rather than statistically conclusive
-- Both models are relatively small (2B and 7B); behaviour may differ at larger scales
-- Rendered images use clean digital text — real-world visual noise not tested
-- Evaluation on GSM8K only; generalisability to other math benchmarks not confirmed
-
----
-
-## Future Work
-
-- Scale to the full GSM8K test set for statistical reliability
-- Expand significance testing beyond McNemar (bootstrap CIs, multi-condition tables)
-- Evaluate frontier models (GPT-4o, Gemini 2.0) to assess whether text dominance persists at scale
-- Implement screenshot condition with controlled noise levels
-- Test on additional benchmarks (SVAMP, AQuA-RAT)
-
----
-
-## References
-
-[1] Cobbe et al. (2021). Training Verifiers to Solve Math Word Problems. arXiv:2110.14168.  
-[2] Wang et al. (2024). Qwen2-VL: Enhancing Vision-Language Model's Perception of the World at Any Resolution. arXiv:2409.12191.  
-[3] Liu et al. (2024). LLaVA-NeXT: Improved Baselines with Visual Instruction Tuning. arXiv:2310.03744.
+- GSM8K: extract `#### <answer>` or last number; integer match after rounding
+- Errors: `correct`, `arithmetic_error`, `reasoning_error`, `no_number`, `vision_error`
+- Full study adds: bootstrap CIs, McNemar, Cohen's h (`src/evaluation.py`)
 
 ---
 
@@ -248,8 +168,6 @@ python scripts/compare_mcnemar.py results/run_a_results.csv --col-a correct --cs
 **Rodela Ghosh** · University of South Florida  
 **Aviral Gupta** · University of South Florida
 
----
-
 ## Acknowledgements
 
-This project was conducted through the PALM Lab at the University of South Florida under the UR2PhD program. The authors thank graduate mentors Ocean Monjur and Shrestha Datta for their guidance and mentorship. We also thank PI Anshuman Chhabra and the UR2PhD team for providing research training, resources, and the opportunity to present this work.
+PALM Lab, UR2PhD program, mentors Ocean Monjur and Shrestha Datta, PI Anshuman Chhabra.
