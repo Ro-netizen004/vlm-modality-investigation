@@ -1,6 +1,6 @@
 # Upload GSM8K rendered images v2 to Hugging Face
 
-**Live dataset:** [RodelaG/gsm8k-rendered-vlm-v2](https://huggingface.co/datasets/RodelaG/gsm8k-rendered-vlm-v2)
+**Live dataset:** [vlm-modality-research/gsm8k-rendered-vlm-v2](https://huggingface.co/datasets/vlm-modality-research/gsm8k-rendered-vlm-v2)
 
 Use this guide to **rebuild or refresh** the Hub release from Drive images.  
 Do **not** mix with v1 ([`RodelaG/gsm8k-rendered-vlm`](https://huggingface.co/datasets/RodelaG/gsm8k-rendered-vlm)).
@@ -46,7 +46,7 @@ hf_gsm8k_v2_upload/
 
 1. Log in: [huggingface.co](https://huggingface.co) → Settings → Access Tokens (write)
 2. Create dataset: [huggingface.co/new-dataset](https://huggingface.co/new-dataset)
-3. Suggested id: **`RodelaG/gsm8k-rendered-vlm-v2`** (or your org/name)
+3. Suggested id: **`vlm-modality-research/gsm8k-rendered-vlm-v2`** (or your org/name)
 4. License: same as v1 (e.g. MIT / CC-BY — match your v1 choice)
 
 ---
@@ -65,10 +65,10 @@ pip install huggingface_hub
 huggingface-cli login
 
 cd hf_gsm8k_v2_upload
-huggingface-cli upload RodelaG/gsm8k-rendered-vlm-v2 . --repo-type dataset
+huggingface-cli upload vlm-modality-research/gsm8k-rendered-vlm-v2 . --repo-type dataset
 ```
 
-Replace `RodelaG/gsm8k-rendered-vlm-v2` with your repo id.
+Replace `vlm-modality-research/gsm8k-rendered-vlm-v2` with your repo id.
 
 ---
 
@@ -111,7 +111,7 @@ Source text: [openai/gsm8k](https://huggingface.co/datasets/openai/gsm8k) test s
 After upload, edit `docs/CANONICAL.md` and `CLAUDE.md`:
 
 ```text
-v2 Hub: https://huggingface.co/datasets/RodelaG/gsm8k-rendered-vlm-v2
+v2 Hub: https://huggingface.co/datasets/vlm-modality-research/gsm8k-rendered-vlm-v2
 ```
 
 Tell Aviral: Phase 1 numbers use **this** revision; v1 is symposium pilot only.
@@ -124,7 +124,7 @@ Tell Aviral: Phase 1 numbers use **this** revision; v1 is symposium pilot only.
 from huggingface_hub import snapshot_download
 
 DATA = snapshot_download(
-    "RodelaG/gsm8k-rendered-vlm-v2",
+    "vlm-modality-research/gsm8k-rendered-vlm-v2",
     repo_type="dataset",
     local_dir="/content/gsm8k-rendered-vlm-v2",
 )

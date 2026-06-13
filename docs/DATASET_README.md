@@ -2,7 +2,7 @@
 
 > **Which dataset?**  
 > - **v1 (symposium pilot)** — this page, [RodelaG/gsm8k-rendered-vlm](https://huggingface.co/datasets/RodelaG/gsm8k-rendered-vlm)  
-> - **v2 (full study)** — [RodelaG/gsm8k-rendered-vlm-v2](https://huggingface.co/datasets/RodelaG/gsm8k-rendered-vlm-v2)  
+> - **v2 (full study)** — [vlm-modality-research/gsm8k-rendered-vlm-v2](https://huggingface.co/datasets/vlm-modality-research/gsm8k-rendered-vlm-v2)  
 > **Do not mix v1 and v2 in one results table.**
 
 ---

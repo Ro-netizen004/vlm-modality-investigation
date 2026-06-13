@@ -91,7 +91,7 @@ python scripts/compare_mcnemar.py results/a.csv --col-a correct_text --csv-b res
 ### v2 — full study (current)
 
 - **Images:** `vlm_research_results/rendered_images/` on team Google Drive
-- **HF:** [RodelaG/gsm8k-rendered-vlm-v2](https://huggingface.co/datasets/RodelaG/gsm8k-rendered-vlm-v2)
+- **HF:** [vlm-modality-research/gsm8k-rendered-vlm-v2](https://huggingface.co/datasets/vlm-modality-research/gsm8k-rendered-vlm-v2)
 - **Renderer:** `src/rendering.py` — 900px, raw question, `q000.png` naming
 - **Labels:** `openai/gsm8k` test split
 
