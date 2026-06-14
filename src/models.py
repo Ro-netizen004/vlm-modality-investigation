@@ -171,16 +171,16 @@ class VLMModel:
         self.model.eval()
 
     def _load_minicpm(self):
-        """MiniCPM-V-2.6 from OpenBMB."""
         from transformers import AutoTokenizer, AutoModel
 
         self.tokenizer = AutoTokenizer.from_pretrained(
             self.model_name, trust_remote_code=True)
         quant_config = get_quant_config(self.quantize, self.dtype)
-        kwargs = {"device_map": "auto", "torch_dtype": self.dtype, "trust_remote_code": True}
+        kwargs = {"torch_dtype": self.dtype, "trust_remote_code": True}
         if quant_config:
             kwargs["quantization_config"] = quant_config
         self.model = AutoModel.from_pretrained(self.model_name, **kwargs)
+        self.model = self.model.to("cuda")
         self.model.eval()
 
     def _load_idefics(self):
