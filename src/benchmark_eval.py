@@ -67,6 +67,9 @@ def match_answer(prediction: str, item: BenchmarkItem) -> bool:
         return False
 
     # Numeric comparison
+    # TODO: Phase 3 — round() is correct for GSM8K (integer answers) but wrong for
+    # SVAMP (decimals) and MATH (fractions/expressions). Replace with per-dataset
+    # tolerance: exact float for SVAMP, expression evaluator for MATH.
     if item.reference_number is not None:
         pred_num = extract_numeric_answer(prediction)
         if pred_num is not None:

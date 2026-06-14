@@ -93,10 +93,10 @@ def plot_error_breakdown(errors_by_condition, model_name, output_dir):
 
 def plot_mismatch_dominance(follow_counts, model_name, output_dir):
     """Bar chart of modality dominance in mismatch condition."""
-    keys = ["image", "text", "equal", "invalid"]
-    labels = ["Closer to\nImage", "Closer to\nText", "Equal\nDistance", "Invalid\n(no number)"]
+    keys   = ["image", "text", "neither", "ambiguous", "invalid"]
+    labels = ["Follows\nImage", "Follows\nText", "Neither\n(both wrong)", "Ambiguous\n(same answer)", "Invalid\n(no number)"]
     counts = [follow_counts.get(k, 0) for k in keys]
-    colors = ["#55A868", "#4C72B0", "#8172B2", "#C44E52"]
+    colors = ["#55A868", "#4C72B0", "#DD8452", "#8172B2", "#C44E52"]
     n_total = sum(counts)
 
     fig, ax = plt.subplots(figsize=(7, 5))
@@ -109,7 +109,7 @@ def plot_mismatch_dominance(follow_counts, model_name, output_dir):
 
     short = model_name.split("/")[-1]
     ax.set_ylabel("Number of Problems")
-    ax.set_title(f"Modality Dominance Under Conflict — {short}")
+    ax.set_title(f"Mismatch Condition Results — {short}")
     ax.set_ylim(0, n_total + max(15, n_total * 0.15))
     ax.grid(axis="y", alpha=0.3)
 

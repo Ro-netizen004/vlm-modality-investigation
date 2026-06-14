@@ -30,6 +30,9 @@ def extract_numeric_answer(text: str):
 
 def answers_match(pred: str, ref: str) -> bool:
     """Compare predicted and reference answers numerically (rounded to int)."""
+    # TODO: Phase 3 — add per-dataset tolerance (e.g. exact float for SVAMP decimals,
+    # letter matching for AQuA-RAT, expression matching for MATH).
+    # See vlm_benchmark/answer_parsing.py for the strategy pattern to port.
     p = extract_numeric_answer(pred)
     r = extract_numeric_answer(ref)
     if p is None or r is None:
@@ -85,25 +88,32 @@ def error_counts(errors, categories=None):
 def mcnemar_test(correct_a, correct_b):
     """
     McNemar's test for paired binary outcomes.
-    Returns: chi2 statistic, p-value, contingency counts (b, c).
-    b = A correct & B wrong, c = A wrong & B correct.
+    Uses scipy.stats.mcnemar — stable across scipy versions.
+    Returns: chi2 statistic, p-value, b, c (discordant counts).
     """
+    from scipy.stats import mcnemar as scipy_mcnemar
+
     assert len(correct_a) == len(correct_b)
-    b = sum(a and not b for a, b in zip(correct_a, correct_b))  # A right, B wrong
-    c = sum(not a and b for a, b in zip(correct_a, correct_b))  # A wrong, B right
+
+    a = [bool(x) for x in correct_a]
+    b_flags = [bool(x) for x in correct_b]
+
+    n_cc = sum(ai and bi     for ai, bi in zip(a, b_flags))  # both correct
+    n_cw = sum(ai and not bi for ai, bi in zip(a, b_flags))  # A correct, B wrong (c)
+    n_wc = sum(not ai and bi for ai, bi in zip(a, b_flags))  # A wrong, B correct (b)
+    n_ww = sum(not ai and not bi for ai, bi in zip(a, b_flags))  # both wrong
+
+    b = n_wc  # discordant: only B correct
+    c = n_cw  # discordant: only A correct
 
     if b + c == 0:
         return 0.0, 1.0, b, c
 
-    if b + c < 25:
-        # exact binomial test (small sample)
-        p_value = stats.binom_test(b, b + c, 0.5)  # type: ignore
-    else:
-        chi2 = (abs(b - c) - 1) ** 2 / (b + c)  # Yates correction
-        p_value = 1 - stats.chi2.cdf(chi2, df=1)
+    table = [[n_cc, c], [b, n_ww]]
+    exact = (b + c) < 25
+    result = scipy_mcnemar(table, exact=exact)
 
-    chi2_val = (abs(b - c) - 1) ** 2 / (b + c) if (b + c) > 0 else 0.0
-    return chi2_val, p_value, b, c
+    return float(result.statistic), float(result.pvalue), b, c
 
 
 def bootstrap_ci(correct_flags, n_bootstrap=10000, ci=0.95, seed=42):
@@ -133,15 +143,26 @@ def cohens_h(p1, p2):
 
 def chi_squared_test(observed_counts):
     """
-    Chi-squared test for modality preference (mismatch condition).
-    observed_counts: dict with keys 'image', 'text', (optionally 'equal').
-    Tests against uniform distribution (no preference).
+    Chi-squared test for modality preference on DECIDABLE mismatch trials only.
+    Only 'image' and 'text' counts are tested — 'neither', 'ambiguous', 'equal',
+    and 'invalid' are excluded because they don't indicate a clear modality preference.
+    Tests against uniform distribution (no preference between image and text).
     """
-    labels = [k for k in ["image", "text"] if k in observed_counts]
-    observed = np.array([observed_counts[k] for k in labels])
-    expected = np.full_like(observed, observed.sum() / len(observed), dtype=float)
-    chi2, p_value = stats.chisquare(observed, expected)
-    return chi2, p_value
+    image = observed_counts.get("image", 0)
+    text  = observed_counts.get("text", 0)
+    decidable = image + text
+
+    if decidable == 0:
+        return 0.0, 1.0
+
+    total = sum(observed_counts.values())
+    excluded = total - decidable
+    if excluded > 0:
+        print(f"  Note: chi-squared run on {decidable}/{total} decidable trials "
+              f"({excluded} excluded: neither/ambiguous/equal/invalid)")
+
+    chi2, p_value = stats.chisquare([image, text])
+    return float(chi2), float(p_value)
 
 
 def compute_all_statistics(text_correct, img_correct, mismatch_follows):
@@ -213,7 +234,8 @@ def format_statistics_report(stats_dict: dict) -> str:
         "  ── Mismatch Modality Preference ─────────────────────",
         f"  Follows image : {s['mismatch_counts'].get('image', 0)}",
         f"  Follows text  : {s['mismatch_counts'].get('text', 0)}",
-        f"  Equal         : {s['mismatch_counts'].get('equal', 0)}",
+        f"  Neither       : {s['mismatch_counts'].get('neither', 0)}",
+        f"  Ambiguous     : {s['mismatch_counts'].get('ambiguous', 0)}",
         f"  Invalid       : {s['mismatch_counts'].get('invalid', 0)}",
         f"  Chi-squared   : {s['mismatch_chi2']:.3f}",
         f"  p-value       : {s['mismatch_p']:.6f}",
