@@ -1,0 +1,73 @@
+# ── VLM Modality Research — GAIVI GPU53 (8× L40S, 48GB each) ──────────
+# Full precision (no quantization) — L40S has enough VRAM
+# Expected runtime: ~2-3 hours for all 8 models (sequential, single GPU)
+
+dataset:
+  name: openai/gsm8k
+  config: main
+  split: test
+  num_problems: null  # full 1319 test set
+
+models:
+  - name: Qwen/Qwen2-VL-2B-Instruct
+    type: qwen
+    max_new_tokens: 256
+    torch_dtype: bfloat16
+    quantize: null
+
+  - name: llava-hf/llava-v1.6-mistral-7b-hf
+    type: llava
+    max_new_tokens: 512
+    torch_dtype: float16
+    quantize: null
+
+  - name: Qwen/Qwen2.5-VL-7B-Instruct
+    type: qwen
+    max_new_tokens: 512
+    torch_dtype: bfloat16
+    quantize: null
+
+  - name: OpenGVLab/InternVL2-8B
+    type: internvl
+    max_new_tokens: 512
+    torch_dtype: bfloat16
+    quantize: null
+
+  - name: llava-hf/llava-onevision-qwen2-7b-ov-hf
+    type: llava_onevision
+    max_new_tokens: 512
+    torch_dtype: float16
+    quantize: null
+
+  - name: microsoft/Phi-3.5-vision-instruct
+    type: phi
+    max_new_tokens: 512
+    torch_dtype: bfloat16
+    quantize: null           # No quantization = no weight-tying bug
+
+  - name: openbmb/MiniCPM-V-2_6
+    type: minicpm
+    max_new_tokens: 512
+    torch_dtype: bfloat16
+    quantize: null
+
+  - name: HuggingFaceM4/Idefics3-8B-Llama3
+    type: idefics
+    max_new_tokens: 512
+    torch_dtype: bfloat16
+    quantize: null
+
+image_rendering:
+  width: 900
+  font_size: 22
+  padding: 40
+  bg_color: white
+  text_color: black
+
+conditions:
+  - text_only
+  - rendered_image
+  - mismatch
+
+output_dir: results
+seed: 42
