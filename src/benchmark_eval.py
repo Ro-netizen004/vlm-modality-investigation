@@ -33,7 +33,7 @@ from src.evaluation import (
     answers_match, classify_error, compute_accuracy,
     compute_all_statistics, format_statistics_report,
     extract_numeric_answer, mcnemar_test, bootstrap_ci,
-    binomial_ci, cohens_h,
+    binomial_ci, cohens_h, score_mismatch_follows,
 )
 from src.rendering import render_text_to_image, render_all_images, load_image
 from src.visualization import plot_error_breakdown, plot_mismatch_dominance
@@ -111,7 +111,7 @@ def run_protocol_a(model, items: List[BenchmarkItem], benchmark_name: str,
     results = {
         "text_preds": [], "text_correct": [], "text_errors": [],
         "img_preds": [], "img_correct": [], "img_errors": [],
-        "mm_preds": [], "mm_follows": [], "mm_img_diffs": [], "mm_txt_diffs": [],
+        "mm_preds": [], "mm_follows": [],
     }
 
     # ── Condition 1: Text-Only ──
@@ -154,21 +154,11 @@ def run_protocol_a(model, items: List[BenchmarkItem], benchmark_name: str,
         except Exception as e:
             pred = f"ERROR: {e}"
 
-        pred_val = extract_numeric_answer(pred)
-        img_val = item.reference_number
-        txt_val = txt_item.reference_number
-
-        if pred_val is None or img_val is None or txt_val is None:
-            follows, d_img, d_txt = "invalid", None, None
-        else:
-            d_img = abs(pred_val - img_val)
-            d_txt = abs(pred_val - txt_val)
-            follows = "image" if d_img < d_txt else ("text" if d_txt < d_img else "equal")
+        follows = score_mismatch_follows(
+            pred, item.reference_answer, txt_item.reference_answer)
 
         results["mm_preds"].append(pred)
         results["mm_follows"].append(follows)
-        results["mm_img_diffs"].append(d_img)
-        results["mm_txt_diffs"].append(d_txt)
 
     print(f"  Dominance: {Counter(results['mm_follows'])}")
     return results
