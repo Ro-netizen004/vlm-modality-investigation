@@ -25,7 +25,7 @@ from tqdm import tqdm
 
 sys.path.insert(0, str(Path(__file__).resolve().parent.parent))
 
-from src.rendering import render_problem_to_image
+from src.rendering import render_text_to_image
 
 HF_ORG = "vlm-modality-research"
 
@@ -141,12 +141,10 @@ def build_dataset(name: str, num_problems: int = None) -> Dataset:
     """Load raw data, render images, return HF Dataset."""
     rows = LOADERS[name](num_problems)
 
-    # MATH-500 contains LaTeX — use LaTeX-aware renderer
-    use_latex = name == "math"
-    print(f"Rendering {len(rows)} images for {name} (latex={use_latex})...")
+    print(f"Rendering {len(rows)} images for {name}...")
     images = []
     for row in tqdm(rows, desc="Rendering"):
-        img = render_problem_to_image(row["question"], latex=use_latex)
+        img = render_text_to_image(row["question"])
         images.append(img)
 
     dataset = Dataset.from_dict({

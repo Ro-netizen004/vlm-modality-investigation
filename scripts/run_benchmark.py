@@ -51,22 +51,32 @@ def load_gsm8k(dataset_name, dataset_config, split, num_problems=None):
     return full["question"], full["answer"]
 
 
-def download_hf_images(image_dir: str, num_problems: int = None) -> None:
-    """Download canonical v2 images from HuggingFace dataset instead of re-rendering locally."""
+def load_from_hf(image_dir: str, num_problems: int = None):
+    """
+    Load questions, answers and images from canonical HF v2 dataset.
+    Saves images to image_dir and returns (questions, references).
+    """
     os.makedirs(image_dir, exist_ok=True)
     hf = load_dataset("vlm-modality-research/gsm8k-rendered-vlm-v2", split="train")
     if num_problems:
         hf = hf.select(range(min(num_problems, len(hf))))
+
+    questions  = [row["question"] for row in hf]
+    references = [row["answer"]   for row in hf]
+
     existing = sum(1 for f in os.listdir(image_dir) if f.endswith(".png"))
     if existing >= len(hf):
-        print(f"HF images already downloaded ({existing} found) — skipping")
-        return
-    print(f"Downloading {len(hf)} canonical images from HuggingFace...")
-    for i, row in enumerate(tqdm(hf, desc="Images")):
-        path = os.path.join(image_dir, f"q{i:03d}.png")
-        if not os.path.exists(path):
-            row["image"].save(path)
-    print(f"Done — {len(hf)} images saved to {image_dir}")
+        print(f"HF images already downloaded ({existing} found) — skipping image save")
+    else:
+        print(f"Downloading {len(hf)} canonical images from HuggingFace...")
+        for i, row in enumerate(tqdm(hf, desc="Images")):
+            path = os.path.join(image_dir, f"q{i:03d}.png")
+            if not os.path.exists(path):
+                row["image"].save(path)
+        print(f"Done — {len(hf)} images saved to {image_dir}")
+
+    print(f"Loaded {len(questions)} problems from HF dataset")
+    return questions, references
 
 
 def run_condition_text_only(model, questions, references):
@@ -217,24 +227,25 @@ def main():
     output_dir = args.output_dir or config.get("output_dir", "results")
     os.makedirs(output_dir, exist_ok=True)
 
-    # Load dataset
-    questions, references = load_gsm8k(
-        config["dataset"]["name"],
-        config["dataset"]["config"],
-        config["dataset"]["split"],
-        num_problems,
-    )
-    questions = list(questions)
-    references = list(references)
-    n = len(questions)
-    print(f"Running benchmark on {n} problems\n")
-
-    # Images — either download canonical HF v2 or render locally
+    # Load dataset + images
     image_dir = os.path.join(output_dir, "rendered_images")
     if args.hf_images:
-        download_hf_images(image_dir, num_problems)
-    elif not args.skip_render:
-        render_all_images(questions, image_dir, config.get("image_rendering", {}))
+        # Load everything (questions, answers, images) from canonical HF dataset
+        questions, references = load_from_hf(image_dir, num_problems)
+    else:
+        questions, references = load_gsm8k(
+            config["dataset"]["name"],
+            config["dataset"]["config"],
+            config["dataset"]["split"],
+            num_problems,
+        )
+        questions = list(questions)
+        references = list(references)
+        if not args.skip_render:
+            render_all_images(questions, image_dir, config.get("image_rendering", {}))
+
+    n = len(questions)
+    print(f"Running benchmark on {n} problems\n")
 
     # Select models
     if args.models:

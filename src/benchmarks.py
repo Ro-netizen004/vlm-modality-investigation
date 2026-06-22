@@ -329,28 +329,79 @@ def load_chartqa(num_problems=None) -> List[BenchmarkItem]:
 
 BENCHMARK_REGISTRY = {
     # Text-based math (render as images for Condition 2)
-    "gsm8k":    {"loader": load_gsm8k,     "type": "text_math",   "has_images": False},
-    "svamp":    {"loader": load_svamp,      "type": "text_math",   "has_images": False},
-    "aqua_rat": {"loader": load_aqua_rat,   "type": "text_math",   "has_images": False},
-    "math":     {"loader": load_math_dataset, "type": "text_math", "has_images": False},
+    "gsm8k":    {"loader": load_gsm8k,       "type": "text_math",       "has_images": False,
+                 "hf_repo_id": "vlm-modality-research/gsm8k-rendered-vlm-v2"},
+    "svamp":    {"loader": load_svamp,        "type": "text_math",       "has_images": False,
+                 "hf_repo_id": "vlm-modality-research/svamp-rendered-vlm-v1"},
+    "aqua_rat": {"loader": load_aqua_rat,     "type": "text_math",       "has_images": False,
+                 "hf_repo_id": "vlm-modality-research/aqua-rat-rendered-vlm-v1"},
+    "math":     {"loader": load_math_dataset, "type": "text_math",       "has_images": False,
+                 "hf_repo_id": "vlm-modality-research/math-rendered-vlm-v1"},
 
-    # Visual math (native images)
-    "mathvista": {"loader": load_mathvista, "type": "visual_math", "has_images": True},
+    # Visual math (native images) — no rendered HF repo needed
+    "mathvista": {"loader": load_mathvista, "type": "visual_math",      "has_images": True,
+                  "hf_repo_id": None},
 
     # Non-math visual reasoning (native images)
-    "scienceqa": {"loader": load_scienceqa, "type": "visual_reasoning", "has_images": True},
-    "ai2d":      {"loader": load_ai2d,      "type": "visual_reasoning", "has_images": True},
-    "chartqa":   {"loader": load_chartqa,    "type": "visual_reasoning", "has_images": True},
+    "scienceqa": {"loader": load_scienceqa, "type": "visual_reasoning", "has_images": True,
+                  "hf_repo_id": None},
+    "ai2d":      {"loader": load_ai2d,      "type": "visual_reasoning", "has_images": True,
+                  "hf_repo_id": None},
+    "chartqa":   {"loader": load_chartqa,   "type": "visual_reasoning", "has_images": True,
+                  "hf_repo_id": None},
 }
 
 
-def load_benchmark(name: str, num_problems=None) -> List[BenchmarkItem]:
-    """Load a benchmark by name."""
+def load_benchmark_from_hf(name: str, num_problems: int = None) -> List[BenchmarkItem]:
+    """
+    Load a text-based benchmark directly from the canonical HF rendered dataset.
+    Returns BenchmarkItems with question, answer, and image already populated.
+    Only works for benchmarks that have hf_repo_id set.
+    """
+    info = BENCHMARK_REGISTRY.get(name)
+    if not info:
+        raise ValueError(f"Unknown benchmark: {name}")
+    repo_id = info.get("hf_repo_id")
+    if not repo_id:
+        raise ValueError(f"No HF rendered dataset for {name} — use load_benchmark() instead")
+
+    ds = load_dataset(repo_id, split="train")
+    if num_problems:
+        ds = ds.select(range(min(num_problems, len(ds))))
+
+    items = []
+    for row in ds:
+        image = row.get("image")
+        if image is not None and not isinstance(image, Image.Image):
+            try:
+                image = Image.open(image).convert("RGB")
+            except Exception:
+                image = None
+
+        answer = str(row.get("answer", ""))
+        ref_num = extract_number_from_answer(answer)
+
+        items.append(BenchmarkItem(
+            id=row.get("problem_id", len(items)),
+            question=row.get("question", ""),
+            reference_answer=answer,
+            reference_number=ref_num,
+            image=image,
+        ))
+
+    print(f"{name} (from HF): loaded {len(items)} problems with images")
+    return items
+
+
+def load_benchmark(name: str, num_problems=None, use_hf: bool = False) -> List[BenchmarkItem]:
+    """Load a benchmark by name. use_hf=True loads from canonical HF rendered dataset."""
     if name not in BENCHMARK_REGISTRY:
         raise ValueError(
             f"Unknown benchmark: {name}. "
             f"Available: {list(BENCHMARK_REGISTRY.keys())}"
         )
+    if use_hf and BENCHMARK_REGISTRY[name].get("hf_repo_id"):
+        return load_benchmark_from_hf(name, num_problems)
     return BENCHMARK_REGISTRY[name]["loader"](num_problems)
 
 
