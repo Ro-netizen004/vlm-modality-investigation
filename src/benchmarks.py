@@ -143,17 +143,17 @@ def load_aqua_rat(num_problems=None) -> List[BenchmarkItem]:
 
 def load_math_dataset(num_problems=None) -> List[BenchmarkItem]:
     """MATH — competition-level math problems."""
-    ds = load_dataset("hendrycks/competition_math", split="test")
+    ds = load_dataset("HuggingFaceH4/MATH-500", split="test")
     if num_problems:
         ds = ds.select(range(min(num_problems, len(ds))))
 
     items = []
     for i, row in enumerate(ds):
-        # MATH answers are in \boxed{...} format
-        answer = row["solution"]
-        # Extract boxed answer
-        boxed = re.search(r"\\boxed\{([^}]+)\}", answer)
-        ref_answer = boxed.group(1) if boxed else answer
+        # MATH-500 has pre-extracted answer field
+        ref_answer = row.get("answer", "")
+        if not ref_answer:
+            boxed = re.search(r"\\boxed\{([^}]+)\}", row.get("solution", ""))
+            ref_answer = boxed.group(1) if boxed else ""
         ref_num = extract_number_from_answer(ref_answer)
 
         items.append(BenchmarkItem(

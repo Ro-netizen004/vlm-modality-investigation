@@ -7,6 +7,7 @@ Usage:
     python scripts/run_benchmark.py --num-problems 100       # first 100 only
     python scripts/run_benchmark.py --config configs/custom.yaml
     python scripts/run_benchmark.py --models "Qwen/Qwen2-VL-2B-Instruct"
+    python scripts/run_benchmark.py --hf-images              # use canonical HF v2 images
 """
 
 import argparse
@@ -48,6 +49,24 @@ def load_gsm8k(dataset_name, dataset_config, split, num_problems=None):
         full = full.select(range(min(num_problems, len(full))))
     print(f"Loaded {len(full)} problems from {dataset_name} {split} split")
     return full["question"], full["answer"]
+
+
+def download_hf_images(image_dir: str, num_problems: int = None) -> None:
+    """Download canonical v2 images from HuggingFace dataset instead of re-rendering locally."""
+    os.makedirs(image_dir, exist_ok=True)
+    hf = load_dataset("vlm-modality-research/gsm8k-rendered-vlm-v2", split="train")
+    if num_problems:
+        hf = hf.select(range(min(num_problems, len(hf))))
+    existing = sum(1 for f in os.listdir(image_dir) if f.endswith(".png"))
+    if existing >= len(hf):
+        print(f"HF images already downloaded ({existing} found) — skipping")
+        return
+    print(f"Downloading {len(hf)} canonical images from HuggingFace...")
+    for i, row in enumerate(tqdm(hf, desc="Images")):
+        path = os.path.join(image_dir, f"q{i:03d}.png")
+        if not os.path.exists(path):
+            row["image"].save(path)
+    print(f"Done — {len(hf)} images saved to {image_dir}")
 
 
 def run_condition_text_only(model, questions, references):
@@ -187,6 +206,8 @@ def main():
     parser.add_argument("--output-dir", type=str, default=None)
     parser.add_argument("--skip-render", action="store_true",
                         help="Skip image rendering (use existing images)")
+    parser.add_argument("--hf-images", action="store_true",
+                        help="Download canonical v2 images from HuggingFace instead of rendering locally")
     args = parser.parse_args()
 
     config = load_config(args.config)
@@ -208,9 +229,11 @@ def main():
     n = len(questions)
     print(f"Running benchmark on {n} problems\n")
 
-    # Render images
+    # Images — either download canonical HF v2 or render locally
     image_dir = os.path.join(output_dir, "rendered_images")
-    if not args.skip_render:
+    if args.hf_images:
+        download_hf_images(image_dir, num_problems)
+    elif not args.skip_render:
         render_all_images(questions, image_dir, config.get("image_rendering", {}))
 
     # Select models

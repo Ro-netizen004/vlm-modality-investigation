@@ -48,9 +48,19 @@ The CLI flags above **do not work** on current `scripts/run_benchmark.py` (it wa
 ### v2 — full study (Phase 1)
 
 - **Hub:** [vlm-modality-research/gsm8k-rendered-vlm-v2](https://huggingface.co/datasets/vlm-modality-research/gsm8k-rendered-vlm-v2)
+- **Columns:** `problem_id`, `question`, `answer`, `split`, `image`
 - **Renderer:** `src/rendering.py` (`render_text_to_image`)
 - **Width:** 900px | **Prefix:** none | **Names:** `q000.png` … `q999.png`, `q1000.png` … `q1318.png`
-- **Source of truth until HF upload:** Google Drive `vlm_research_results/rendered_images/`
+
+### Phase 3 rendered datasets
+
+| Dataset | Hub | Problems |
+|---------|-----|---------|
+| SVAMP | [vlm-modality-research/svamp-rendered-vlm-v1](https://huggingface.co/datasets/vlm-modality-research/svamp-rendered-vlm-v1) | 300 |
+| AQuA-RAT | [vlm-modality-research/aqua-rat-rendered-vlm-v1](https://huggingface.co/datasets/vlm-modality-research/aqua-rat-rendered-vlm-v1) | 254 |
+| MATH-500 | [vlm-modality-research/math-rendered-vlm-v1](https://huggingface.co/datasets/vlm-modality-research/math-rendered-vlm-v1) | 500 |
+
+All Phase 3 datasets include `problem_id`, `question`, `answer`, `split`, `image` columns.
 
 **Do not compare v1 and v2 numbers as the same experiment.**
 
@@ -88,3 +98,4 @@ vlm_research_results/          # Google Drive
 - [x] `ReadMe.md`, `FRAMEWORK.md`, `GETTING_STARTED.md` — aligned with current vs legacy  
 - [x] HF v2 dataset — [vlm-modality-research/gsm8k-rendered-vlm-v2](https://huggingface.co/datasets/vlm-modality-research/gsm8k-rendered-vlm-v2)  
 - [x] HF dataset README — published on Hub  
+- [x] Phase 3 datasets — SVAMP, AQuA-RAT, MATH-500 uploaded to HF org  
