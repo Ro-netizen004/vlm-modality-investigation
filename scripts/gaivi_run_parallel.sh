@@ -39,7 +39,7 @@ for MODEL in "${MODELS[@]}"; do
 #!/bin/bash -l
 #SBATCH --job-name=vlm-${SHORT:0:15}
 #SBATCH -p ${PARTITION}
-#SBATCH -w gpu53
+#SBATCH -w GPU53
 #SBATCH --gpus=1
 #SBATCH --cpus-per-task=8
 #SBATCH --mem=64G

@@ -1,7 +1,7 @@
 #!/bin/bash -l
 #SBATCH --job-name=vlm-bench
 #SBATCH -p CISL
-#SBATCH -w gpu53
+#SBATCH -w GPU53
 #SBATCH --gpus=1
 #SBATCH --cpus-per-task=16
 #SBATCH --mem=128G
