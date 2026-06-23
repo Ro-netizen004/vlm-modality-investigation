@@ -208,6 +208,12 @@ def compute_all_statistics(text_correct, img_correct, mismatch_follows):
     follow_counts = Counter(mismatch_follows)
     chi2_mm, p_mm = chi_squared_test(follow_counts)
 
+    n_img = follow_counts.get("image", 0)
+    n_txt = follow_counts.get("text", 0)
+    decidable = n_img + n_txt
+    text_pref = n_txt / decidable if decidable else None
+    image_pref = n_img / decidable if decidable else None
+
     return {
         "n": n,
         "acc_text": acc_text,
@@ -225,6 +231,12 @@ def compute_all_statistics(text_correct, img_correct, mismatch_follows):
         "mismatch_chi2": chi2_mm,
         "mismatch_p": p_mm,
         "mismatch_counts": dict(follow_counts),
+        "mismatch_decidable": decidable,
+        "text_preference": text_pref,
+        "image_preference": image_pref,
+        "neither_rate": follow_counts.get("neither", 0) / n if n else None,
+        "ambiguous_rate": follow_counts.get("ambiguous", 0) / n if n else None,
+        "invalid_rate": follow_counts.get("invalid", 0) / n if n else None,
     }
 
 
@@ -262,6 +274,24 @@ def format_statistics_report(stats_dict: dict) -> str:
         f"  Neither       : {s['mismatch_counts'].get('neither', 0)}",
         f"  Ambiguous     : {s['mismatch_counts'].get('ambiguous', 0)}",
         f"  Invalid       : {s['mismatch_counts'].get('invalid', 0)}",
+        "",
+    ]
+    # Decidable-only preference rates (excludes neither/ambiguous/invalid)
+    n_total = s["n"]
+    n_img = s["mismatch_counts"].get("image", 0)
+    n_txt = s["mismatch_counts"].get("text", 0)
+    n_neither = s["mismatch_counts"].get("neither", 0)
+    n_ambig = s["mismatch_counts"].get("ambiguous", 0)
+    n_invalid = s["mismatch_counts"].get("invalid", 0)
+    decidable = n_img + n_txt
+    lines += [
+        f"  Decidable trials      : {decidable} / {n_total}",
+        f"  Text preference       : {n_txt / decidable:.3f}  ({n_txt}/{decidable})" if decidable else "  Text preference       : N/A",
+        f"  Image preference      : {n_img / decidable:.3f}  ({n_img}/{decidable})" if decidable else "  Image preference      : N/A",
+        f"  Neither rate          : {n_neither / n_total:.3f}  ({n_neither}/{n_total})",
+        f"  Ambiguous rate        : {n_ambig / n_total:.3f}  ({n_ambig}/{n_total})",
+        f"  Invalid rate          : {n_invalid / n_total:.3f}  ({n_invalid}/{n_total})",
+        "",
         f"  Chi-squared   : {s['mismatch_chi2']:.3f}",
         f"  p-value       : {s['mismatch_p']:.6f}",
         f"  Significant   : {'YES' if s['mismatch_p'] < 0.05 else 'NO'}",
