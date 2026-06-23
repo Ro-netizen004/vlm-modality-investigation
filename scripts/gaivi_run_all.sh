@@ -41,7 +41,8 @@ cd "$REPO_DIR"
 
 srun python scripts/run_benchmark.py \
     --config configs/gaivi.yaml \
-    --output-dir "$OUTPUT_DIR"
+    --output-dir "$OUTPUT_DIR" \
+    --hf-images
 
 echo ""
 echo "============================================"

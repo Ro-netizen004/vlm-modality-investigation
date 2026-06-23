@@ -63,7 +63,8 @@ cd ${REPO_DIR}
 srun python scripts/run_benchmark.py \\
     --config configs/gaivi.yaml \\
     --models "${MODEL}" \\
-    --output-dir "${OUTPUT_DIR}"
+    --output-dir "${OUTPUT_DIR}" \\
+    --hf-images
 
 echo "Done: ${MODEL} at \$(date)"
 SCRIPT
