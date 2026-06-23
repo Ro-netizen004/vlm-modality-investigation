@@ -39,6 +39,8 @@ def main():
     parser.add_argument("--num-problems", type=int, default=None,
                         help="Limit problems per benchmark")
     parser.add_argument("--output-dir", type=str, default=None)
+    parser.add_argument("--hf-images", action="store_true",
+                        help="Load questions+images from canonical HF rendered datasets instead of rendering locally")
     parser.add_argument("--list", action="store_true", help="List available benchmarks")
     args = parser.parse_args()
 
@@ -104,11 +106,14 @@ def main():
             print(f"{'=' * 60}")
 
             t0 = time.time()
-            items = load_benchmark(bench_name, args.num_problems)
+            items = load_benchmark(bench_name, args.num_problems, use_hf=args.hf_images)
 
             if not info["has_images"]:
-                # Protocol A: text-based, render as images
-                image_dir = os.path.join(output_dir, "images", bench_name)
+                if args.hf_images:
+                    # Images already in BenchmarkItem.image — pass pre-loaded images directly
+                    image_dir = None
+                else:
+                    image_dir = os.path.join(output_dir, "images", bench_name)
                 results = run_protocol_a(vlm, items, bench_name, output_dir, image_dir)
                 stats = save_protocol_a_results(
                     results, items, mc["name"], bench_name, output_dir)

@@ -88,12 +88,21 @@ python scripts/compare_mcnemar.py results/a.csv --col-a correct_text --csv-b res
 
 ## Datasets
 
-### v2 — full study (current)
+### Phase 1 — GSM8K (current)
 
-- **Images:** `vlm_research_results/rendered_images/` on team Google Drive
 - **HF:** [vlm-modality-research/gsm8k-rendered-vlm-v2](https://huggingface.co/datasets/vlm-modality-research/gsm8k-rendered-vlm-v2)
+- **Columns:** `problem_id`, `question`, `answer`, `split`, `image`
 - **Renderer:** `src/rendering.py` — 900px, raw question, `q000.png` naming
-- **Labels:** `openai/gsm8k` test split
+
+### Phase 3 — Multi-benchmark rendered datasets
+
+| Dataset | HuggingFace | Problems |
+|---------|-------------|---------|
+| SVAMP | [vlm-modality-research/svamp-rendered-vlm-v1](https://huggingface.co/datasets/vlm-modality-research/svamp-rendered-vlm-v1) | 300 |
+| AQuA-RAT | [vlm-modality-research/aqua-rat-rendered-vlm-v1](https://huggingface.co/datasets/vlm-modality-research/aqua-rat-rendered-vlm-v1) | 254 |
+| MATH-500 | [vlm-modality-research/math-rendered-vlm-v1](https://huggingface.co/datasets/vlm-modality-research/math-rendered-vlm-v1) | 500 |
+
+All datasets include `problem_id`, `question`, `answer`, `split`, `image`. Use `--hf-images` with `run_benchmark.py` to load canonical images instead of re-rendering locally.
 
 ### v1 — symposium pilot (legacy)
 

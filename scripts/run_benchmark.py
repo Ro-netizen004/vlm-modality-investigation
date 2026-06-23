@@ -7,6 +7,7 @@ Usage:
     python scripts/run_benchmark.py --num-problems 100       # first 100 only
     python scripts/run_benchmark.py --config configs/custom.yaml
     python scripts/run_benchmark.py --models "Qwen/Qwen2-VL-2B-Instruct"
+    python scripts/run_benchmark.py --hf-images              # use canonical HF v2 images
 """
 
 import argparse
@@ -27,7 +28,7 @@ sys.path.insert(0, str(Path(__file__).resolve().parent.parent))
 
 from src.evaluation import (
     answers_match, classify_error, compute_accuracy, compute_all_statistics,
-    extract_numeric_answer, format_statistics_report, numeric_distance,
+    format_statistics_report, score_mismatch_follows,
 )
 from src.models import VLMModel
 from src.rendering import load_image, render_all_images
@@ -50,11 +51,42 @@ def load_gsm8k(dataset_name, dataset_config, split, num_problems=None):
     return full["question"], full["answer"]
 
 
+def load_from_hf(image_dir: str, num_problems: int = None):
+    """
+    Load questions, answers and images from canonical HF v2 dataset.
+    Saves images to image_dir and returns (questions, references).
+    """
+    os.makedirs(image_dir, exist_ok=True)
+    hf = load_dataset("vlm-modality-research/gsm8k-rendered-vlm-v2", split="train")
+    if num_problems:
+        hf = hf.select(range(min(num_problems, len(hf))))
+
+    questions  = [row["question"] for row in hf]
+    references = [row["answer"]   for row in hf]
+
+    existing = sum(1 for f in os.listdir(image_dir) if f.endswith(".png"))
+    if existing >= len(hf):
+        print(f"HF images already downloaded ({existing} found) — skipping image save")
+    else:
+        print(f"Downloading {len(hf)} canonical images from HuggingFace...")
+        for i, row in enumerate(tqdm(hf, desc="Images")):
+            path = os.path.join(image_dir, f"q{i:03d}.png")
+            if not os.path.exists(path):
+                row["image"].save(path)
+        print(f"Done — {len(hf)} images saved to {image_dir}")
+
+    print(f"Loaded {len(questions)} problems from HF dataset")
+    return questions, references
+
+
 def run_condition_text_only(model, questions, references):
     """Condition 1: text-only baseline."""
     predictions, correct_flags, errors = [], [], []
     for q, ref in tqdm(zip(questions, references), total=len(questions), desc="Text-Only"):
-        pred = model.generate_text_only(q)
+        try:
+            pred = model.generate_text_only(q)
+        except Exception as e:
+            pred = f"ERROR: {e}"
         predictions.append(pred)
         correct_flags.append(answers_match(pred, ref))
         errors.append(classify_error(pred, ref))
@@ -66,8 +98,11 @@ def run_condition_rendered_image(model, questions, references, image_dir):
     predictions, correct_flags, errors = [], [], []
     for i, (q, ref) in enumerate(tqdm(zip(questions, references),
                                        total=len(questions), desc="Rendered Image")):
-        img = load_image(i, image_dir)
-        pred = model.generate_with_image(img)
+        try:
+            img = load_image(i, image_dir)
+            pred = model.generate_with_image(img)
+        except Exception as e:
+            pred = f"ERROR: {e}"
         predictions.append(pred)
         correct_flags.append(answers_match(pred, ref))
         errors.append(classify_error(pred, ref))
@@ -78,49 +113,31 @@ def run_condition_mismatch(model, questions, references, image_dir):
     """Condition 3: modality mismatch (image_i + text_{i+1})."""
     n = len(questions)
     predictions, follows_list = [], []
-    img_diffs, txt_diffs = [], []
 
     for i in tqdm(range(n), desc="Mismatch"):
-        img = load_image(i, image_dir)
         txt_idx = (i + 1) % n
-        txt_question = questions[txt_idx]
-
         mismatch_prompt = (
             f"Solve the following math problem step by step. "
             f"End with '#### <answer>'.\n\n"
-            f"Problem: {txt_question}"
+            f"Problem: {questions[txt_idx]}"
         )
-        pred = model.generate_with_image(img, text_prompt=mismatch_prompt)
+        try:
+            img = load_image(i, image_dir)
+            pred = model.generate_with_image(img, text_prompt=mismatch_prompt)
+        except Exception as e:
+            pred = f"ERROR: {e}"
 
-        pred_val = extract_numeric_answer(pred)
-        img_val = extract_numeric_answer(references[i])
-        txt_val = extract_numeric_answer(references[txt_idx])
-
-        if pred_val is None or img_val is None or txt_val is None:
-            follows = "invalid"
-            diff_img, diff_txt = None, None
-        else:
-            diff_img = abs(pred_val - img_val)
-            diff_txt = abs(pred_val - txt_val)
-            if diff_img < diff_txt:
-                follows = "image"
-            elif diff_txt < diff_img:
-                follows = "text"
-            else:
-                follows = "equal"
-
+        follows = score_mismatch_follows(pred, references[i], references[txt_idx])
         predictions.append(pred)
         follows_list.append(follows)
-        img_diffs.append(diff_img)
-        txt_diffs.append(diff_txt)
 
-    return predictions, follows_list, img_diffs, txt_diffs
+    return predictions, follows_list
 
 
 def save_results(model_name, questions, references, output_dir,
                  text_preds, text_correct, text_errors,
                  img_preds, img_correct, img_errors,
-                 mm_preds, mm_follows, mm_img_diffs, mm_txt_diffs,
+                 mm_preds, mm_follows,
                  stats_dict):
     """Save all results to CSV and statistics to JSON/text."""
     short = model_name.split("/")[-1]
@@ -141,8 +158,6 @@ def save_results(model_name, questions, references, output_dir,
         "error_rendered": img_errors,
         "pred_mismatch": mm_preds,
         "mismatch_follows": mm_follows,
-        "mismatch_img_diff": mm_img_diffs,
-        "mismatch_txt_diff": mm_txt_diffs,
     })
     results_df.to_csv(os.path.join(model_dir, "gsm8k_results.csv"), index=False)
 
@@ -164,8 +179,6 @@ def save_results(model_name, questions, references, output_dir,
         "text_reference": [references[(i + 1) % n] for i in range(n)],
         "prediction": mm_preds,
         "follows": mm_follows,
-        "img_diff": mm_img_diffs,
-        "txt_diff": mm_txt_diffs,
     })
     mm_df.to_csv(os.path.join(model_dir, "mismatch_results.csv"), index=False)
 
@@ -203,6 +216,8 @@ def main():
     parser.add_argument("--output-dir", type=str, default=None)
     parser.add_argument("--skip-render", action="store_true",
                         help="Skip image rendering (use existing images)")
+    parser.add_argument("--hf-images", action="store_true",
+                        help="Download canonical v2 images from HuggingFace instead of rendering locally")
     args = parser.parse_args()
 
     config = load_config(args.config)
@@ -212,22 +227,25 @@ def main():
     output_dir = args.output_dir or config.get("output_dir", "results")
     os.makedirs(output_dir, exist_ok=True)
 
-    # Load dataset
-    questions, references = load_gsm8k(
-        config["dataset"]["name"],
-        config["dataset"]["config"],
-        config["dataset"]["split"],
-        num_problems,
-    )
-    questions = list(questions)
-    references = list(references)
+    # Load dataset + images
+    image_dir = os.path.join(output_dir, "rendered_images")
+    if args.hf_images:
+        # Load everything (questions, answers, images) from canonical HF dataset
+        questions, references = load_from_hf(image_dir, num_problems)
+    else:
+        questions, references = load_gsm8k(
+            config["dataset"]["name"],
+            config["dataset"]["config"],
+            config["dataset"]["split"],
+            num_problems,
+        )
+        questions = list(questions)
+        references = list(references)
+        if not args.skip_render:
+            render_all_images(questions, image_dir, config.get("image_rendering", {}))
+
     n = len(questions)
     print(f"Running benchmark on {n} problems\n")
-
-    # Render images
-    image_dir = os.path.join(output_dir, "rendered_images")
-    if not args.skip_render:
-        render_all_images(questions, image_dir, config.get("image_rendering", {}))
 
     # Select models
     if args.models:
@@ -243,6 +261,14 @@ def main():
     all_stats = {}
 
     for mc in model_configs:
+        short = mc["name"].split("/")[-1]
+        model_dir = os.path.join(output_dir, short)
+        if os.path.exists(os.path.join(model_dir, "statistics.json")):
+            print(f"\n>>> SKIPPING {short} — results already exist <<<")
+            with open(os.path.join(model_dir, "statistics.json")) as f:
+                all_stats[mc["name"]] = json.load(f)
+            continue
+
         print(f"\n{'=' * 70}")
         print(f"  MODEL: {mc['name']}")
         print(f"{'=' * 70}\n")
@@ -265,21 +291,23 @@ def main():
         img_preds, img_correct, img_errors = run_condition_rendered_image(
             vlm, questions, references, image_dir)
 
-        mm_preds, mm_follows, mm_img_diffs, mm_txt_diffs = run_condition_mismatch(
+        mm_preds, mm_follows = run_condition_mismatch(
             vlm, questions, references, image_dir)
 
         elapsed = time.time() - t0
+        print(f"\nDominance: {Counter(mm_follows)}")
         print(f"\nTotal inference time: {elapsed / 60:.1f} minutes")
 
         # Statistics
         stats = compute_all_statistics(text_correct, img_correct, mm_follows)
+        stats["elapsed_minutes"] = round(elapsed / 60, 1)
 
         # Save everything
         save_results(
             mc["name"], questions, references, output_dir,
             text_preds, text_correct, text_errors,
             img_preds, img_correct, img_errors,
-            mm_preds, mm_follows, mm_img_diffs, mm_txt_diffs,
+            mm_preds, mm_follows,
             stats,
         )
 

@@ -49,6 +49,30 @@ def numeric_distance(pred: str, ref: str) -> float:
     return abs(p - r)
 
 
+def score_mismatch_follows(prediction: str, image_ref: str, text_ref: str) -> str:
+    """
+    Correctness-based mismatch classification (GSM8K numeric answers).
+
+    Returns one of: image, text, neither, ambiguous, invalid.
+    """
+    pred_val = extract_numeric_answer(str(prediction))
+    img_val = extract_numeric_answer(str(image_ref))
+    txt_val = extract_numeric_answer(str(text_ref))
+
+    if pred_val is None:
+        return "invalid"
+    if img_val is None or txt_val is None:
+        return "invalid"
+    if img_val == txt_val:
+        return "ambiguous"
+    # round() is fine for GSM8K integers; extend for decimals/MC in multi-benchmark
+    if round(pred_val) == round(img_val):
+        return "image"
+    if round(pred_val) == round(txt_val):
+        return "text"
+    return "neither"
+
+
 # ── Error Classification ─────────────────────────────────────────────────────
 
 VISION_KEYWORDS = [
@@ -88,11 +112,10 @@ def error_counts(errors, categories=None):
 def mcnemar_test(correct_a, correct_b):
     """
     McNemar's test for paired binary outcomes.
-    Uses scipy.stats.mcnemar — stable across scipy versions.
+    Uses exact binomial test for small discordant counts and Yates-corrected
+    chi-square for larger counts.
     Returns: chi2 statistic, p-value, b, c (discordant counts).
     """
-    from scipy.stats import mcnemar as scipy_mcnemar
-
     assert len(correct_a) == len(correct_b)
 
     a = [bool(x) for x in correct_a]
@@ -109,11 +132,13 @@ def mcnemar_test(correct_a, correct_b):
     if b + c == 0:
         return 0.0, 1.0, b, c
 
-    table = [[n_cc, c], [b, n_ww]]
-    exact = (b + c) < 25
-    result = scipy_mcnemar(table, exact=exact)
+    chi2_val = (abs(b - c) - 1) ** 2 / (b + c)
+    if b + c < 25:
+        p_value = stats.binomtest(min(b, c), n=b + c, p=0.5).pvalue
+    else:
+        p_value = 1 - stats.chi2.cdf(chi2_val, df=1)
 
-    return float(result.statistic), float(result.pvalue), b, c
+    return float(chi2_val), float(p_value), b, c
 
 
 def bootstrap_ci(correct_flags, n_bootstrap=10000, ci=0.95, seed=42):

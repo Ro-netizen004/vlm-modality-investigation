@@ -10,7 +10,6 @@
 | `Noise_Ablation.ipynb` | Yes | Phase 4 — image degradation curve |
 | `Prompt_Sensitivity.ipynb` | Yes | Phase 5 — prompt strategies |
 | `Mechanistic_Analysis.ipynb` | Yes | Phase 6 — attention / OCR (appendix) |
-| `Full_GSM8K_Benchmark.ipynb` | Yes | Single-model GSM8K via `src/` (alternative to Run_All) |
 | `Kaggle_Benchmark.ipynb` | Yes | Same as above on Kaggle GPU |
 
 Open from GitHub: `https://github.com/Ro-netizen004/vlm-modality-research`
@@ -20,6 +19,6 @@ Open from GitHub: `https://github.com/Ro-netizen004/vlm-modality-research`
 
 ## Deprecated (do not use for new work)
 
-Moved to [`deprecated/`](deprecated/README.md) — symposium pilot notebooks only.
+Moved to [`deprecated/`](deprecated/README.md) — old pilot or superseded GSM8K notebooks only.
 
 See [`docs/GETTING_STARTED.md`](../docs/GETTING_STARTED.md).

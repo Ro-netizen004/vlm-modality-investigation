@@ -17,7 +17,7 @@ benchmarks:
   gsm8k:     {protocol: A, source: "openai/gsm8k",               split: test, size: 1319}
   svamp:     {protocol: A, source: "ChilleD/SVAMP",             split: test, size: 1000}
   aqua_rat:  {protocol: A, source: "deepmind/aqua_rat",         split: test, size: 254}
-  math:      {protocol: A, source: "hendrycks/competition_math", split: test, size: 5000}
+  math:      {protocol: A, source: "HuggingFaceH4/MATH-500",     split: test, size: 500}
 
   # Protocol B — visual reasoning
   mathvista: {protocol: B, source: "AI4Math/MathVista",          split: testmini, size: 1000}

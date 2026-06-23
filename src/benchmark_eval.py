@@ -33,7 +33,7 @@ from src.evaluation import (
     answers_match, classify_error, compute_accuracy,
     compute_all_statistics, format_statistics_report,
     extract_numeric_answer, mcnemar_test, bootstrap_ci,
-    binomial_ci, cohens_h,
+    binomial_ci, cohens_h, score_mismatch_follows,
 )
 from src.rendering import render_text_to_image, render_all_images, load_image
 from src.visualization import plot_error_breakdown, plot_mismatch_dominance
@@ -103,15 +103,22 @@ def run_protocol_a(model, items: List[BenchmarkItem], benchmark_name: str,
     n = len(items)
     questions = [item.question for item in items]
 
-    # Render images if needed
-    if image_dir is None:
-        image_dir = os.path.join(output_dir, f"{benchmark_name}_images")
-    render_all_images(questions, image_dir)
+    # Determine image source: item.image (HF pre-loaded) or local rendered files
+    use_hf_images = all(item.image is not None for item in items)
+    if not use_hf_images:
+        if image_dir is None:
+            image_dir = os.path.join(output_dir, f"{benchmark_name}_images")
+        render_all_images(questions, image_dir)
+
+    def _get_image(i, item):
+        if use_hf_images:
+            return item.image
+        return load_image(i, image_dir)
 
     results = {
         "text_preds": [], "text_correct": [], "text_errors": [],
         "img_preds": [], "img_correct": [], "img_errors": [],
-        "mm_preds": [], "mm_follows": [], "mm_img_diffs": [], "mm_txt_diffs": [],
+        "mm_preds": [], "mm_follows": [],
     }
 
     # ── Condition 1: Text-Only ──
@@ -130,7 +137,7 @@ def run_protocol_a(model, items: List[BenchmarkItem], benchmark_name: str,
     print(f"\n[{benchmark_name}] Condition 2: Rendered Image")
     for i, item in enumerate(tqdm(items, desc="Image")):
         try:
-            img = load_image(i, image_dir)
+            img = _get_image(i, item)
             pred = model.generate_with_image(img)
         except Exception as e:
             pred = f"ERROR: {e}"
@@ -149,26 +156,16 @@ def run_protocol_a(model, items: List[BenchmarkItem], benchmark_name: str,
             f"End with '#### <answer>'.\n\nProblem: {txt_item.question}"
         )
         try:
-            img = load_image(i, image_dir)
+            img = _get_image(i, item)
             pred = model.generate_with_image(img, text_prompt=prompt)
         except Exception as e:
             pred = f"ERROR: {e}"
 
-        pred_val = extract_numeric_answer(pred)
-        img_val = item.reference_number
-        txt_val = txt_item.reference_number
-
-        if pred_val is None or img_val is None or txt_val is None:
-            follows, d_img, d_txt = "invalid", None, None
-        else:
-            d_img = abs(pred_val - img_val)
-            d_txt = abs(pred_val - txt_val)
-            follows = "image" if d_img < d_txt else ("text" if d_txt < d_img else "equal")
+        follows = score_mismatch_follows(
+            pred, item.reference_answer, txt_item.reference_answer)
 
         results["mm_preds"].append(pred)
         results["mm_follows"].append(follows)
-        results["mm_img_diffs"].append(d_img)
-        results["mm_txt_diffs"].append(d_txt)
 
     print(f"  Dominance: {Counter(results['mm_follows'])}")
     return results

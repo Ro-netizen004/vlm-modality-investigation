@@ -1,9 +1,26 @@
-# Rendered GSM8K-VL Dataset
+# Rendered VLM Datasets
 
 > **Which dataset?**  
-> - **v1 (symposium pilot)** — this page, [RodelaG/gsm8k-rendered-vlm](https://huggingface.co/datasets/RodelaG/gsm8k-rendered-vlm)  
-> - **v2 (full study)** — [vlm-modality-research/gsm8k-rendered-vlm-v2](https://huggingface.co/datasets/vlm-modality-research/gsm8k-rendered-vlm-v2)  
+> - **v1 (symposium pilot)** — [RodelaG/gsm8k-rendered-vlm](https://huggingface.co/datasets/RodelaG/gsm8k-rendered-vlm)  
+> - **v2 GSM8K (Phase 1)** — [vlm-modality-research/gsm8k-rendered-vlm-v2](https://huggingface.co/datasets/vlm-modality-research/gsm8k-rendered-vlm-v2)  
+> - **SVAMP (Phase 3)** — [vlm-modality-research/svamp-rendered-vlm-v1](https://huggingface.co/datasets/vlm-modality-research/svamp-rendered-vlm-v1)  
+> - **AQuA-RAT (Phase 3)** — [vlm-modality-research/aqua-rat-rendered-vlm-v1](https://huggingface.co/datasets/vlm-modality-research/aqua-rat-rendered-vlm-v1)  
+> - **MATH-500 (Phase 3)** — [vlm-modality-research/math-rendered-vlm-v1](https://huggingface.co/datasets/vlm-modality-research/math-rendered-vlm-v1)  
 > **Do not mix v1 and v2 in one results table.**
+
+## Phase 3 datasets (SVAMP, AQuA-RAT, MATH-500)
+
+All Phase 3 datasets were rendered using the same v2 protocol (900px, DejaVu Sans 22pt, no prefix) and include:
+
+| Column | Description |
+|--------|-------------|
+| `problem_id` | Index aligned with source dataset order |
+| `question` | Original question text |
+| `answer` | Reference answer (numeric or letter) |
+| `split` | Always `test` |
+| `image` | PIL Image — rendered PNG |
+
+Regenerate: `python scripts/prepare_hf_datasets.py --datasets svamp,aqua_rat,math --hf-token <token>`
 
 ---
 

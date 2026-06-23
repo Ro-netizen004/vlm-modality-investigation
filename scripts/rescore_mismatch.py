@@ -25,38 +25,11 @@ import sys
 sys.path.insert(0, str(Path(__file__).resolve().parent.parent))
 
 from src.evaluation import (
-    extract_numeric_answer,
     compute_all_statistics,
     format_statistics_report,
+    score_mismatch_follows,
 )
 from src.visualization import plot_error_breakdown, plot_mismatch_dominance
-
-
-def rescore_row(pred: str, img_ref: str, txt_ref: str) -> str:
-    """
-    Correctness-based mismatch classification.
-
-    image     — prediction matches image problem's answer
-    text      — prediction matches text problem's answer
-    neither   — prediction matches neither (model was wrong for both)
-    ambiguous — image and text answers are the same (can't distinguish)
-    invalid   — prediction or a reference answer has no extractable number
-    """
-    pred_val = extract_numeric_answer(str(pred))
-    img_val  = extract_numeric_answer(str(img_ref))
-    txt_val  = extract_numeric_answer(str(txt_ref))
-
-    if pred_val is None:
-        return "invalid"
-    if img_val is None or txt_val is None:
-        return "invalid"
-    if img_val == txt_val:
-        return "ambiguous"
-    if round(pred_val) == round(img_val):
-        return "image"
-    if round(pred_val) == round(txt_val):
-        return "text"
-    return "neither"
 
 
 def rescore_csv(csv_path: Path, dry_run: bool = False) -> None:
@@ -81,7 +54,7 @@ def rescore_csv(csv_path: Path, dry_run: bool = False) -> None:
         img_ref  = row["reference"]                        # reference for image problem
         txt_ref  = df.loc[txt_idx, "reference"]           # reference for text problem (next row)
         pred     = row["pred_mismatch"]
-        new_follows.append(rescore_row(pred, img_ref, txt_ref))
+        new_follows.append(score_mismatch_follows(pred, img_ref, txt_ref))
 
     print(f"\nNEW mismatch distribution:")
     print(dict(Counter(new_follows)))
