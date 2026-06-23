@@ -103,10 +103,17 @@ def run_protocol_a(model, items: List[BenchmarkItem], benchmark_name: str,
     n = len(items)
     questions = [item.question for item in items]
 
-    # Render images if needed
-    if image_dir is None:
-        image_dir = os.path.join(output_dir, f"{benchmark_name}_images")
-    render_all_images(questions, image_dir)
+    # Determine image source: item.image (HF pre-loaded) or local rendered files
+    use_hf_images = all(item.image is not None for item in items)
+    if not use_hf_images:
+        if image_dir is None:
+            image_dir = os.path.join(output_dir, f"{benchmark_name}_images")
+        render_all_images(questions, image_dir)
+
+    def _get_image(i, item):
+        if use_hf_images:
+            return item.image
+        return load_image(i, image_dir)
 
     results = {
         "text_preds": [], "text_correct": [], "text_errors": [],
@@ -130,7 +137,7 @@ def run_protocol_a(model, items: List[BenchmarkItem], benchmark_name: str,
     print(f"\n[{benchmark_name}] Condition 2: Rendered Image")
     for i, item in enumerate(tqdm(items, desc="Image")):
         try:
-            img = load_image(i, image_dir)
+            img = _get_image(i, item)
             pred = model.generate_with_image(img)
         except Exception as e:
             pred = f"ERROR: {e}"
@@ -149,7 +156,7 @@ def run_protocol_a(model, items: List[BenchmarkItem], benchmark_name: str,
             f"End with '#### <answer>'.\n\nProblem: {txt_item.question}"
         )
         try:
-            img = load_image(i, image_dir)
+            img = _get_image(i, item)
             pred = model.generate_with_image(img, text_prompt=prompt)
         except Exception as e:
             pred = f"ERROR: {e}"

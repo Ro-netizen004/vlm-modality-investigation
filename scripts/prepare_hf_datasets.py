@@ -202,6 +202,15 @@ def main():
                   f"image_size={dataset[0]['image'].size}")
             continue
 
+        if name == "gsm8k":
+            print("\nWARNING: This will OVERWRITE the canonical GSM8K v2 dataset on HuggingFace.")
+            print(f"  Repo: {cfg['repo_id']}")
+            print("  Only proceed if you intend to replace the existing canonical dataset.")
+            confirm = input("  Type 'yes' to confirm overwrite, or anything else to skip: ")
+            if confirm.strip().lower() != "yes":
+                print("Skipped GSM8K.")
+                continue
+
         print(f"Pushing to {cfg['repo_id']}...")
         dataset.push_to_hub(
             cfg["repo_id"],
