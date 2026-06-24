@@ -38,5 +38,18 @@
   "neither_rate": 0.2608036391205459,
   "ambiguous_rate": 0.011372251705837756,
   "invalid_rate": 0.0,
-  "elapsed_minutes": 405.0
+  "elapsed_minutes": 405.0,
+  "rescore": {
+    "text_total": 1298,
+    "image_total": 6,
+    "neither_final": 0,
+    "decidable": 1304,
+    "text_preference_rescored": 0.995398773006135,
+    "image_preference_rescored": 0.004601226993865031,
+    "neither_rate_rescored": 0.0,
+    "original_neither_count": 344,
+    "neither_breakdown": {
+      "text_reasoning": 344
+    }
+  }
 }

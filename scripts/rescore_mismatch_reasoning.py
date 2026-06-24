@@ -198,7 +198,30 @@ def rescore_model(model_dir: str) -> dict:
         json.dump(stats, f, indent=2)
     print(f"Saved: {stats_path}")
 
-    # Append reasoning-trace section to existing statistics_report.txt
+    # Merge rescore fields into statistics.json under a 'rescore' key
+    stats_json_path = os.path.join(model_dir, "statistics.json")
+    if os.path.exists(stats_json_path):
+        with open(stats_json_path, encoding="utf-8") as f:
+            main_stats = json.load(f)
+        if "rescore" not in main_stats:
+            main_stats["rescore"] = {
+                "text_total": n_text,
+                "image_total": n_image,
+                "neither_final": n_neither_final,
+                "decidable": decidable,
+                "text_preference_rescored": n_text / decidable if decidable else None,
+                "image_preference_rescored": n_image / decidable if decidable else None,
+                "neither_rate_rescored": n_neither_final / n_total if n_total else None,
+                "original_neither_count": n_neither,
+                "neither_breakdown": dict(rescore_counts),
+            }
+            with open(stats_json_path, "w", encoding="utf-8") as f:
+                json.dump(main_stats, f, indent=2, default=lambda x: int(x) if hasattr(x, 'item') else x)
+            print(f"Updated: {stats_json_path}")
+        else:
+            print(f"Skipped statistics.json update (rescore key already present)")
+
+    # Append reasoning-trace section to existing statistics_report.txt (once only)
     report_path = os.path.join(model_dir, "statistics_report.txt")
     if os.path.exists(report_path) and "REASONING-TRACE RESCORE" not in open(report_path, encoding="utf-8").read():
         rescore_section = "\n".join([
