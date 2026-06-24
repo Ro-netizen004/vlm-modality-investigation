@@ -1,0 +1,42 @@
+{
+  "n": 1319,
+  "acc_text": 0.7482941622441244,
+  "acc_img": 0.601213040181956,
+  "acc_drop": -0.1470811220621684,
+  "text_ci_95": [
+    0.7239566426370994,
+    0.7715200341026951
+  ],
+  "img_ci_95": [
+    0.5742077163984749,
+    0.6277662821461298
+  ],
+  "text_boot_ci_95": [
+    0.7255496588324488,
+    0.7717968157695224
+  ],
+  "img_boot_ci_95": [
+    0.574677786201668,
+    0.6269901440485216
+  ],
+  "mcnemar_chi2": 98.54232804232804,
+  "mcnemar_p": 0.0,
+  "mcnemar_b": 92,
+  "mcnemar_c": 286,
+  "cohens_h": 0.31582911451011775,
+  "mismatch_chi2": 936.15,
+  "mismatch_p": 1.3596121618450295e-205,
+  "mismatch_counts": {
+    "text": 954,
+    "neither": 344,
+    "ambiguous": 15,
+    "image": 6
+  },
+  "mismatch_decidable": 960,
+  "text_preference": 0.99375,
+  "image_preference": 0.00625,
+  "neither_rate": 0.2608036391205459,
+  "ambiguous_rate": 0.011372251705837756,
+  "invalid_rate": 0.0,
+  "elapsed_minutes": 405.0
+}
