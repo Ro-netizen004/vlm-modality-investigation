@@ -1,0 +1,23 @@
+
+======================================================================
+  REASONING-TRACE RESCORE (post-hoc)
+======================================================================
+  Method: For 'neither' trials, reasoning chain is checked for
+  unique keywords and numbers from each problem. Trials whose
+  reasoning overlaps with one problem are reclassified as
+  text_reasoning or image_reasoning.
+
+  Original 'neither' count : 789  (59.8% of N)
+
+  Neither breakdown (after rescore):
+    text_reasoning      : 779  (98.7%)
+    image_reasoning     : 7  (0.9%)
+    neither             : 3  (0.4%)
+
+  Combined preference (exact + reasoning):
+    Text  (exact + reasoning) : 1285  (97.4% of N)
+    Image (exact + reasoning) : 16  (1.2% of N)
+    True neither              : 3  (0.2% of N)
+    Text preference (decidable) : 0.988
+    Image preference (decidable): 0.012
+======================================================================

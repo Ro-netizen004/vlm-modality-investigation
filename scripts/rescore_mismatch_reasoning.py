@@ -198,6 +198,39 @@ def rescore_model(model_dir: str) -> dict:
         json.dump(stats, f, indent=2)
     print(f"Saved: {stats_path}")
 
+    # Append reasoning-trace section to existing statistics_report.txt
+    report_path = os.path.join(model_dir, "statistics_report.txt")
+    if os.path.exists(report_path) and "REASONING-TRACE RESCORE" not in open(report_path, encoding="utf-8").read():
+        rescore_section = "\n".join([
+            "",
+            "=" * 70,
+            "  REASONING-TRACE RESCORE (post-hoc)",
+            "=" * 70,
+            "  Method: For 'neither' trials, reasoning chain is checked for",
+            "  unique keywords and numbers from each problem. Trials whose",
+            "  reasoning overlaps with one problem are reclassified as",
+            "  text_reasoning or image_reasoning.",
+            "",
+            f"  Original 'neither' count : {n_neither}  ({n_neither/n_total*100:.1f}% of N)",
+            "",
+            "  Neither breakdown (after rescore):",
+        ])
+        for k, v in sorted(rescore_counts.items(), key=lambda x: -x[1]):
+            rescore_section += f"\n    {k:20s}: {v}  ({v/n_neither*100:.1f}%)"
+
+        rescore_section += "\n\n  Combined preference (exact + reasoning):"
+        rescore_section += f"\n    Text  (exact + reasoning) : {n_text}  ({n_text/n_total*100:.1f}% of N)"
+        rescore_section += f"\n    Image (exact + reasoning) : {n_image}  ({n_image/n_total*100:.1f}% of N)"
+        rescore_section += f"\n    True neither              : {n_neither_final}  ({n_neither_final/n_total*100:.1f}% of N)"
+        if decidable > 0:
+            rescore_section += f"\n    Text preference (decidable) : {n_text/decidable:.3f}"
+            rescore_section += f"\n    Image preference (decidable): {n_image/decidable:.3f}"
+        rescore_section += "\n" + "=" * 70 + "\n"
+
+        with open(report_path, "a", encoding="utf-8") as f:
+            f.write(rescore_section)
+        print(f"Appended rescore section to: {report_path}")
+
     return stats
 
 
