@@ -187,13 +187,13 @@ def save_results(model_name, questions, references, output_dir,
     disagree.to_csv(os.path.join(model_dir, "disagreements.csv"), index=False)
 
     # Statistics
-    with open(os.path.join(model_dir, "statistics.json"), "w") as f:
+    with open(os.path.join(model_dir, "statistics.json"), "w", encoding="utf-8") as f:
         serializable = {k: (list(v) if isinstance(v, tuple) else v)
                         for k, v in stats_dict.items()}
         json.dump(serializable, f, indent=2)
 
     report = format_statistics_report(stats_dict)
-    with open(os.path.join(model_dir, "statistics_report.txt"), "w") as f:
+    with open(os.path.join(model_dir, "statistics_report.txt"), "w", encoding="utf-8") as f:
         f.write(report)
     print(report)
 
@@ -324,7 +324,7 @@ def main():
         for m, s in all_stats.items():
             serializable[m] = {k: (list(v) if isinstance(v, tuple) else v)
                                for k, v in s.items()}
-        with open(summary_path, "w") as f:
+        with open(summary_path, "w", encoding="utf-8") as f:
             json.dump(serializable, f, indent=2)
         print(f"\nCross-model summary saved to: {summary_path}")
 
