@@ -21,8 +21,9 @@ from src.evaluation import extract_numeric_answer, answers_match
 #  PROBLEM DIFFICULTY FEATURES
 # ══════════════════════════════════════════════════════════════════════════════
 
-def count_reasoning_steps(reference_answer: str) -> int:
+def count_reasoning_steps(reference_answer) -> int:
     """Count reasoning steps in a GSM8K reference answer (lines with calculations)."""
+    reference_answer = str(reference_answer) if reference_answer is not None else ""
     if not reference_answer:
         return 0
     lines = reference_answer.strip().split("\n")
@@ -49,8 +50,9 @@ def get_question_length(question: str) -> int:
     return len(question.split())
 
 
-def has_multi_step_operations(reference_answer: str) -> bool:
+def has_multi_step_operations(reference_answer) -> bool:
     """Check if answer requires multiple different operations."""
+    reference_answer = str(reference_answer) if reference_answer is not None else ""
     ops = set()
     if "+" in reference_answer or "add" in reference_answer.lower():
         ops.add("add")

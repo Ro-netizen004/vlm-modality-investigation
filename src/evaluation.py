@@ -8,8 +8,9 @@ from scipy import stats
 
 # ── Answer Extraction ────────────────────────────────────────────────────────
 
-def extract_numeric_answer(text: str):
+def extract_numeric_answer(text) -> float | None:
     """Extract the final numeric answer from model output or GSM8K reference."""
+    text = str(text) if text is not None else ""
     if not text or not text.strip():
         return None
     canon = re.search(r"####\s*([\-\d,\.]+)", text)

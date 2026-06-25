@@ -1,0 +1,54 @@
+ERROR ANALYSIS — llava-onevision-qwen2-7b-ov-hf
+
+======================================================================
+  DISAGREEMENT ANALYSIS
+======================================================================
+  Total problems: 1319
+  Agreement rate: 72.1%
+  Text advantage (text right, image wrong): 292
+  Image advantage (image right, text wrong): 76
+
+  ── Both Correct: 750 problems ──
+    Avg reasoning steps  : 0.0
+    Avg numbers in Q     : 3.2
+    Avg question length  : 41 words
+    Avg answer magnitude : 3500
+    Multi-operation      : 0%
+    Has percentages      : 12%
+
+  ── Both Wrong: 201 problems ──
+    Avg reasoning steps  : 0.0
+    Avg numbers in Q     : 4.0
+    Avg question length  : 56 words
+    Avg answer magnitude : 26245
+    Multi-operation      : 0%
+    Has percentages      : 16%
+
+  ── Text-Only Correct (vision hurt): 292 problems ──
+    Avg reasoning steps  : 0.0
+    Avg numbers in Q     : 3.5
+    Avg question length  : 51 words
+    Avg answer magnitude : 2605
+    Multi-operation      : 0%
+    Has percentages      : 16%
+
+  ── Image-Only Correct (vision helped): 76 problems ──
+    Avg reasoning steps  : 0.0
+    Avg numbers in Q     : 3.8
+    Avg question length  : 52 words
+    Avg answer magnitude : 4582
+    Multi-operation      : 0%
+    Has percentages      : 16%
+
+======================================================================
+
+Correlations with modality gap:
+         feature  pearson_r  pearson_p  spearman_r  spearman_p
+       num_steps  -0.012708   0.644721   -0.014104    0.608803
+     num_numbers  -0.010844   0.693969   -0.008179    0.766648
+ question_length   0.073101   0.007909    0.094918    0.000557
+answer_magnitude  -0.017479   0.525921    0.023588    0.392002
+ multi_operation        NaN        NaN         NaN         NaN
+   has_fractions   0.000747   0.978390    0.000747    0.978390
+ has_percentages   0.021976   0.425174    0.021976    0.425174
+  has_comparison   0.054761   0.046765    0.054761    0.046765

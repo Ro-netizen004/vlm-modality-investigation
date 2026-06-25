@@ -1,0 +1,28 @@
+{
+  "model": "llava-onevision-qwen2-7b-ov-hf",
+  "n_total": 1319,
+  "original_counts": {
+    "text": 990,
+    "neither": 312,
+    "ambiguous": 15,
+    "image": 2
+  },
+  "rescored_counts": {
+    "text": 990,
+    "text_reasoning": 307,
+    "ambiguous": 15,
+    "neither": 5,
+    "image": 2
+  },
+  "neither_breakdown": {
+    "text_reasoning": 307,
+    "neither": 5
+  },
+  "text_total": 1297,
+  "image_total": 2,
+  "neither_final": 5,
+  "decidable": 1299,
+  "text_preference_rescored": 0.9984603541185527,
+  "image_preference_rescored": 0.001539645881447267,
+  "neither_rate_rescored": 0.0037907505686125853
+}

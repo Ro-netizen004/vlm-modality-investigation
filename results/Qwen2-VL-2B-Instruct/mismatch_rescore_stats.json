@@ -1,0 +1,30 @@
+{
+  "model": "Qwen2-VL-2B-Instruct",
+  "n_total": 1319,
+  "original_counts": {
+    "neither": 789,
+    "text": 506,
+    "ambiguous": 15,
+    "image": 9
+  },
+  "rescored_counts": {
+    "text_reasoning": 779,
+    "text": 506,
+    "ambiguous": 15,
+    "image": 9,
+    "image_reasoning": 7,
+    "neither": 3
+  },
+  "neither_breakdown": {
+    "text_reasoning": 779,
+    "neither": 3,
+    "image_reasoning": 7
+  },
+  "text_total": 1285,
+  "image_total": 16,
+  "neither_final": 3,
+  "decidable": 1301,
+  "text_preference_rescored": 0.9877017678708686,
+  "image_preference_rescored": 0.012298232129131437,
+  "neither_rate_rescored": 0.002274450341167551
+}

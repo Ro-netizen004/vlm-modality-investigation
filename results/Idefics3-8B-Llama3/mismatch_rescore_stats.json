@@ -1,0 +1,32 @@
+{
+  "model": "Idefics3-8B-Llama3",
+  "n_total": 1319,
+  "original_counts": {
+    "text": 868,
+    "neither": 429,
+    "ambiguous": 15,
+    "image": 5,
+    "invalid": 2
+  },
+  "rescored_counts": {
+    "text": 868,
+    "text_reasoning": 400,
+    "neither": 26,
+    "ambiguous": 15,
+    "image": 5,
+    "image_reasoning": 3,
+    "invalid": 2
+  },
+  "neither_breakdown": {
+    "text_reasoning": 400,
+    "neither": 26,
+    "image_reasoning": 3
+  },
+  "text_total": 1268,
+  "image_total": 8,
+  "neither_final": 26,
+  "decidable": 1276,
+  "text_preference_rescored": 0.9937304075235109,
+  "image_preference_rescored": 0.006269592476489028,
+  "neither_rate_rescored": 0.019711902956785442
+}

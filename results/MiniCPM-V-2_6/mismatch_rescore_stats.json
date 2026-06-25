@@ -1,0 +1,26 @@
+{
+  "model": "MiniCPM-V-2_6",
+  "n_total": 1319,
+  "original_counts": {
+    "text": 954,
+    "neither": 344,
+    "ambiguous": 15,
+    "image": 6
+  },
+  "rescored_counts": {
+    "text": 954,
+    "text_reasoning": 344,
+    "ambiguous": 15,
+    "image": 6
+  },
+  "neither_breakdown": {
+    "text_reasoning": 344
+  },
+  "text_total": 1298,
+  "image_total": 6,
+  "neither_final": 0,
+  "decidable": 1304,
+  "text_preference_rescored": 0.995398773006135,
+  "image_preference_rescored": 0.004601226993865031,
+  "neither_rate_rescored": 0.0
+}

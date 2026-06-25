@@ -1,0 +1,54 @@
+ERROR ANALYSIS — Idefics3-8B-Llama3
+
+======================================================================
+  DISAGREEMENT ANALYSIS
+======================================================================
+  Total problems: 1319
+  Agreement rate: 44.5%
+  Text advantage (text right, image wrong): 691
+  Image advantage (image right, text wrong): 41
+
+  ── Both Correct: 328 problems ──
+    Avg reasoning steps  : 0.0
+    Avg numbers in Q     : 3.5
+    Avg question length  : 47 words
+    Avg answer magnitude : 2029
+    Multi-operation      : 0%
+    Has percentages      : 15%
+
+  ── Both Wrong: 259 problems ──
+    Avg reasoning steps  : 0.0
+    Avg numbers in Q     : 3.8
+    Avg question length  : 54 words
+    Avg answer magnitude : 21334
+    Multi-operation      : 0%
+    Has percentages      : 19%
+
+  ── Text-Only Correct (vision hurt): 691 problems ──
+    Avg reasoning steps  : 0.0
+    Avg numbers in Q     : 3.3
+    Avg question length  : 43 words
+    Avg answer magnitude : 4051
+    Multi-operation      : 0%
+    Has percentages      : 11%
+
+  ── Image-Only Correct (vision helped): 41 problems ──
+    Avg reasoning steps  : 0.0
+    Avg numbers in Q     : 3.7
+    Avg question length  : 53 words
+    Avg answer magnitude : 467
+    Multi-operation      : 0%
+    Has percentages      : 17%
+
+======================================================================
+
+Correlations with modality gap:
+         feature  pearson_r    pearson_p  spearman_r   spearman_p
+       num_steps   0.000502 9.854565e-01   -0.000642 9.814071e-01
+     num_numbers  -0.108342 8.058734e-05   -0.104598 1.414471e-04
+ question_length  -0.199734 2.461799e-13   -0.191026 2.640787e-12
+answer_magnitude  -0.024535 3.732844e-01    0.031318 2.557066e-01
+ multi_operation        NaN          NaN         NaN          NaN
+   has_fractions   0.001223 9.645994e-01    0.001223 9.645994e-01
+ has_percentages  -0.079230 3.985829e-03   -0.079230 3.985829e-03
+  has_comparison   0.021624 4.326292e-01    0.021624 4.326292e-01

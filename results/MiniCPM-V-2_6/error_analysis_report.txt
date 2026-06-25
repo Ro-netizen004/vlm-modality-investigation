@@ -1,0 +1,54 @@
+ERROR ANALYSIS — MiniCPM-V-2_6
+
+======================================================================
+  DISAGREEMENT ANALYSIS
+======================================================================
+  Total problems: 1319
+  Agreement rate: 71.3%
+  Text advantage (text right, image wrong): 286
+  Image advantage (image right, text wrong): 92
+
+  ── Both Correct: 701 problems ──
+    Avg reasoning steps  : 0.0
+    Avg numbers in Q     : 3.1
+    Avg question length  : 41 words
+    Avg answer magnitude : 2593
+    Multi-operation      : 0%
+    Has percentages      : 11%
+
+  ── Both Wrong: 240 problems ──
+    Avg reasoning steps  : 0.0
+    Avg numbers in Q     : 4.0
+    Avg question length  : 58 words
+    Avg answer magnitude : 21511
+    Multi-operation      : 0%
+    Has percentages      : 19%
+
+  ── Text-Only Correct (vision hurt): 286 problems ──
+    Avg reasoning steps  : 0.0
+    Avg numbers in Q     : 3.7
+    Avg question length  : 48 words
+    Avg answer magnitude : 3219
+    Multi-operation      : 0%
+    Has percentages      : 16%
+
+  ── Image-Only Correct (vision helped): 92 problems ──
+    Avg reasoning steps  : 0.0
+    Avg numbers in Q     : 3.4
+    Avg question length  : 48 words
+    Avg answer magnitude : 12046
+    Multi-operation      : 0%
+    Has percentages      : 15%
+
+======================================================================
+
+Correlations with modality gap:
+         feature  pearson_r  pearson_p  spearman_r  spearman_p
+       num_steps   0.026719   0.332232    0.027124    0.324945
+     num_numbers   0.076841   0.005235    0.067322    0.014466
+ question_length   0.029946   0.277134    0.039026    0.156615
+answer_magnitude  -0.024271   0.378443    0.019473    0.479809
+ multi_operation        NaN        NaN         NaN         NaN
+   has_fractions   0.059565   0.030530    0.059565    0.030530
+ has_percentages   0.021663   0.431801    0.021663    0.431801
+  has_comparison   0.033961   0.217727    0.033961    0.217727

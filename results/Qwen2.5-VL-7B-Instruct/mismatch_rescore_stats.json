@@ -1,0 +1,26 @@
+{
+  "model": "Qwen2.5-VL-7B-Instruct",
+  "n_total": 1319,
+  "original_counts": {
+    "text": 1095,
+    "neither": 201,
+    "ambiguous": 15,
+    "image": 8
+  },
+  "rescored_counts": {
+    "text": 1095,
+    "text_reasoning": 201,
+    "ambiguous": 15,
+    "image": 8
+  },
+  "neither_breakdown": {
+    "text_reasoning": 201
+  },
+  "text_total": 1296,
+  "image_total": 8,
+  "neither_final": 0,
+  "decidable": 1304,
+  "text_preference_rescored": 0.9938650306748467,
+  "image_preference_rescored": 0.006134969325153374,
+  "neither_rate_rescored": 0.0
+}

@@ -1,0 +1,30 @@
+{
+  "model": "InternVL2-8B",
+  "n_total": 1319,
+  "original_counts": {
+    "text": 947,
+    "neither": 320,
+    "image": 37,
+    "ambiguous": 15
+  },
+  "rescored_counts": {
+    "text": 947,
+    "text_reasoning": 306,
+    "image": 37,
+    "ambiguous": 15,
+    "image_reasoning": 13,
+    "neither": 1
+  },
+  "neither_breakdown": {
+    "text_reasoning": 306,
+    "image_reasoning": 13,
+    "neither": 1
+  },
+  "text_total": 1253,
+  "image_total": 50,
+  "neither_final": 1,
+  "decidable": 1303,
+  "text_preference_rescored": 0.9616270145817345,
+  "image_preference_rescored": 0.03837298541826554,
+  "neither_rate_rescored": 0.000758150113722517
+}

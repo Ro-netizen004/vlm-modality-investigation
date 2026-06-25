@@ -1,0 +1,54 @@
+ERROR ANALYSIS — Qwen2.5-VL-7B-Instruct
+
+======================================================================
+  DISAGREEMENT ANALYSIS
+======================================================================
+  Total problems: 1319
+  Agreement rate: 87.9%
+  Text advantage (text right, image wrong): 79
+  Image advantage (image right, text wrong): 81
+
+  ── Both Correct: 1036 problems ──
+    Avg reasoning steps  : 0.0
+    Avg numbers in Q     : 3.3
+    Avg question length  : 44 words
+    Avg answer magnitude : 3202
+    Multi-operation      : 0%
+    Has percentages      : 12%
+
+  ── Both Wrong: 123 problems ──
+    Avg reasoning steps  : 0.0
+    Avg numbers in Q     : 4.1
+    Avg question length  : 60 words
+    Avg answer magnitude : 42486
+    Multi-operation      : 0%
+    Has percentages      : 20%
+
+  ── Text-Only Correct (vision hurt): 79 problems ──
+    Avg reasoning steps  : 0.0
+    Avg numbers in Q     : 4.1
+    Avg question length  : 54 words
+    Avg answer magnitude : 1037
+    Multi-operation      : 0%
+    Has percentages      : 24%
+
+  ── Image-Only Correct (vision helped): 81 problems ──
+    Avg reasoning steps  : 0.0
+    Avg numbers in Q     : 3.9
+    Avg question length  : 54 words
+    Avg answer magnitude : 4750
+    Multi-operation      : 0%
+    Has percentages      : 14%
+
+======================================================================
+
+Correlations with modality gap:
+         feature  pearson_r  pearson_p  spearman_r  spearman_p
+       num_steps   0.056114   0.041586    0.056080    0.041713
+     num_numbers   0.025257   0.359374    0.033776    0.220252
+ question_length  -0.002470   0.928596   -0.015502    0.573763
+answer_magnitude  -0.006857   0.803517    0.002598    0.924905
+ multi_operation        NaN        NaN         NaN         NaN
+   has_fractions   0.017493   0.525585    0.017493    0.525585
+ has_percentages   0.052125   0.058413    0.052125    0.058413
+  has_comparison   0.036753   0.182211    0.036753    0.182211

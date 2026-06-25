@@ -36,7 +36,6 @@ vlm_benchmark_outputs/
 rendered_images/
 
 # Local / Drive experiment outputs (pilot CSVs archived separately; Phase 1 → Drive)
-results/**
 !results/README.md
 
 # HF v2 upload staging (large; publish to Hub, do not commit)

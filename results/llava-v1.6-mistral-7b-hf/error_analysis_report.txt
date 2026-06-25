@@ -1,0 +1,54 @@
+ERROR ANALYSIS — llava-v1.6-mistral-7b-hf
+
+======================================================================
+  DISAGREEMENT ANALYSIS
+======================================================================
+  Total problems: 1319
+  Agreement rate: 69.6%
+  Text advantage (text right, image wrong): 295
+  Image advantage (image right, text wrong): 106
+
+  ── Both Correct: 278 problems ──
+    Avg reasoning steps  : 0.0
+    Avg numbers in Q     : 3.1
+    Avg question length  : 38 words
+    Avg answer magnitude : 505
+    Multi-operation      : 0%
+    Has percentages      : 9%
+
+  ── Both Wrong: 640 problems ──
+    Avg reasoning steps  : 0.0
+    Avg numbers in Q     : 3.7
+    Avg question length  : 51 words
+    Avg answer magnitude : 10768
+    Multi-operation      : 0%
+    Has percentages      : 18%
+
+  ── Text-Only Correct (vision hurt): 295 problems ──
+    Avg reasoning steps  : 0.0
+    Avg numbers in Q     : 3.3
+    Avg question length  : 45 words
+    Avg answer magnitude : 5723
+    Multi-operation      : 0%
+    Has percentages      : 11%
+
+  ── Image-Only Correct (vision helped): 106 problems ──
+    Avg reasoning steps  : 0.0
+    Avg numbers in Q     : 3.3
+    Avg question length  : 43 words
+    Avg answer magnitude : 2728
+    Multi-operation      : 0%
+    Has percentages      : 12%
+
+======================================================================
+
+Correlations with modality gap:
+         feature  pearson_r  pearson_p  spearman_r  spearman_p
+       num_steps   0.026108   0.343410    0.026476    0.336651
+     num_numbers  -0.022764   0.408766   -0.026811    0.330564
+ question_length   0.002252   0.934882    0.008773    0.750254
+answer_magnitude   0.001676   0.951500    0.019636    0.476136
+ multi_operation        NaN        NaN         NaN         NaN
+   has_fractions   0.043735   0.112368    0.043735    0.112368
+ has_percentages  -0.029750   0.280288   -0.029750    0.280288
+  has_comparison  -0.007324   0.790446   -0.007324    0.790446

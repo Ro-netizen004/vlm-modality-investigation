@@ -1,0 +1,28 @@
+{
+  "model": "llava-v1.6-mistral-7b-hf",
+  "n_total": 1319,
+  "original_counts": {
+    "neither": 764,
+    "text": 534,
+    "ambiguous": 15,
+    "image": 6
+  },
+  "rescored_counts": {
+    "text_reasoning": 762,
+    "text": 534,
+    "ambiguous": 15,
+    "image": 6,
+    "image_reasoning": 2
+  },
+  "neither_breakdown": {
+    "text_reasoning": 762,
+    "image_reasoning": 2
+  },
+  "text_total": 1296,
+  "image_total": 8,
+  "neither_final": 0,
+  "decidable": 1304,
+  "text_preference_rescored": 0.9938650306748467,
+  "image_preference_rescored": 0.006134969325153374,
+  "neither_rate_rescored": 0.0
+}
