@@ -34,9 +34,12 @@ def answers_match(pred: str, ref: str) -> bool:
     # TODO: Phase 3 — add per-dataset tolerance (e.g. exact float for SVAMP decimals,
     # letter matching for AQuA-RAT, expression matching for MATH).
     # See vlm_benchmark/answer_parsing.py for the strategy pattern to port.
+    import math
     p = extract_numeric_answer(pred)
     r = extract_numeric_answer(ref)
     if p is None or r is None:
+        return False
+    if math.isinf(p) or math.isnan(p) or math.isinf(r) or math.isnan(r):
         return False
     return round(p) == round(r)
 
