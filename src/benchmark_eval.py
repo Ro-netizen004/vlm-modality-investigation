@@ -73,6 +73,9 @@ def match_answer(prediction: str, item: BenchmarkItem) -> bool:
     if item.reference_number is not None:
         pred_num = extract_numeric_answer(prediction)
         if pred_num is not None:
+            import math
+            if math.isinf(pred_num) or math.isnan(pred_num):
+                return False
             return round(pred_num) == round(item.reference_number)
 
     # Fallback: standard numeric match against reference_answer string
