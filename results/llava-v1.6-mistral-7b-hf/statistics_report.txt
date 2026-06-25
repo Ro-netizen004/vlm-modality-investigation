@@ -1,0 +1,42 @@
+======================================================================
+  STATISTICAL ANALYSIS REPORT
+======================================================================
+  Sample size: N = 1319
+
+  ── Accuracy ──────────────────────────────────────────
+  Text-Only      : 0.434  95% CI [0.407, 0.462]
+  Rendered Image : 0.291  95% CI [0.267, 0.316]
+  Drop           : -0.143
+
+  ── Bootstrap 95% CI ──────────────────────────────────
+  Text-Only      : [0.408, 0.460]
+  Rendered Image : [0.266, 0.315]
+
+  ── McNemar's Test (paired comparison) ───────────────
+  Text correct & Image wrong (b): 106
+  Text wrong & Image correct (c): 295
+  Chi-squared (Yates)           : 88.140
+  p-value                       : 0.000000
+  Significant (p < 0.05)        : YES
+
+  ── Effect Size ───────────────────────────────────────
+  Cohen's h : 0.299  (small)
+
+  ── Mismatch Modality Preference ─────────────────────
+  Follows image : 6
+  Follows text  : 534
+  Neither       : 764
+  Ambiguous     : 15
+  Invalid       : 0
+
+  Decidable trials      : 540 / 1319
+  Text preference       : 0.989  (534/540)
+  Image preference      : 0.011  (6/540)
+  Neither rate          : 0.579  (764/1319)
+  Ambiguous rate        : 0.011  (15/1319)
+  Invalid rate          : 0.000  (0/1319)
+
+  Chi-squared   : 516.267
+  p-value       : 0.000000
+  Significant   : YES
+======================================================================

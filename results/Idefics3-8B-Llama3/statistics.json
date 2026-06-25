@@ -4,12 +4,12 @@
   "acc_img": 0.27975739196360877,
   "acc_drop": -0.49279757391963613,
   "text_ci_95": [
-    0.7489603179551516,
+    0.7489603179551514,
     0.7949284585550602
   ],
   "img_ci_95": [
-    0.255666632060891,
-    0.30483353446823164
+    0.25566663206089096,
+    0.3048335344682317
   ],
   "text_boot_ci_95": [
     0.7498104624715694,
@@ -39,5 +39,19 @@
   "neither_rate": 0.3252463987869598,
   "ambiguous_rate": 0.011372251705837756,
   "invalid_rate": 0.001516300227445034,
-  "elapsed_minutes": 271.8
+  "rescore": {
+    "text_total": 1268,
+    "image_total": 8,
+    "neither_final": 26,
+    "decidable": 1276,
+    "text_preference_rescored": 0.9937304075235109,
+    "image_preference_rescored": 0.006269592476489028,
+    "neither_rate_rescored": 0.019711902956785442,
+    "original_neither_count": 429,
+    "neither_breakdown": {
+      "text_reasoning": 400,
+      "neither": 26,
+      "image_reasoning": 3
+    }
+  }
 }
