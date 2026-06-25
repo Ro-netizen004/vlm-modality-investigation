@@ -63,13 +63,15 @@ def score_mismatch_follows(prediction: str, image_ref: str, text_ref: str) -> st
     img_val = extract_numeric_answer(str(image_ref))
     txt_val = extract_numeric_answer(str(text_ref))
 
+    import math
     if pred_val is None:
         return "invalid"
     if img_val is None or txt_val is None:
         return "invalid"
+    if any(math.isinf(v) or math.isnan(v) for v in (pred_val, img_val, txt_val)):
+        return "neither"
     if img_val == txt_val:
         return "ambiguous"
-    # round() is fine for GSM8K integers; extend for decimals/MC in multi-benchmark
     if round(pred_val) == round(img_val):
         return "image"
     if round(pred_val) == round(txt_val):
