@@ -23,6 +23,7 @@ Each benchmark returns a list of BenchmarkItem with unified fields.
 
 import os
 import re
+import numpy as np
 from dataclasses import dataclass, field
 from typing import List, Optional
 from datasets import load_dataset
@@ -265,9 +266,11 @@ def load_ai2d(num_problems=None) -> List[BenchmarkItem]:
             full_question = question
 
         answer = row.get("answer", 0)
-        if isinstance(answer, int):
-            ref_answer = chr(65 + answer)
-            correct_idx = answer
+        if isinstance(answer, str) and answer.isdigit():
+            answer = int(answer)
+        if isinstance(answer, (int, np.integer)):
+            ref_answer = chr(65 + int(answer))
+            correct_idx = int(answer)
         else:
             ref_answer = str(answer)
             correct_idx = None
@@ -381,12 +384,20 @@ def load_benchmark_from_hf(name: str, num_problems: int = None) -> List[Benchmar
         answer = str(row.get("answer", ""))
         ref_num = extract_number_from_answer(answer)
 
+        correct_choice = None
+        choices = None
+        if len(answer.strip()) == 1 and answer.strip().upper() in "ABCDE":
+            correct_choice = ord(answer.strip().upper()) - ord("A")
+            choices = [answer.strip().upper()]
+
         items.append(BenchmarkItem(
             id=row.get("problem_id", len(items)),
             question=row.get("question", ""),
             reference_answer=answer,
             reference_number=ref_num,
             image=image,
+            choices=choices,
+            correct_choice=correct_choice,
         ))
 
     print(f"{name} (from HF): loaded {len(items)} problems with images")
