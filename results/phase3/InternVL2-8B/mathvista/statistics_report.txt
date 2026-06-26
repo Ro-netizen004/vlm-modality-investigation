@@ -1,0 +1,16 @@
+======================================================================
+  MATHVISTA — PROTOCOL B RESULTS
+======================================================================
+  Model: OpenGVLab/InternVL2-8B
+  N = 1000
+
+  Multimodal (img+text) : 0.277  95% CI [0.249, 0.306]
+  Text-Only (no image) : 0.102  95% CI [0.084, 0.122]
+  Difference           : +0.175
+
+  McNemar p-value : 0.000000  ***
+  Cohen's h       : 0.458
+
+  Interpretation:
+    Vision HELPS — model uses visual info for better answers.
+======================================================================

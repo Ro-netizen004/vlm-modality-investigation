@@ -1,0 +1,29 @@
+{
+  "n": 1000,
+  "benchmark": "mathvista",
+  "model": "OpenGVLab/InternVL2-8B",
+  "acc_multimodal": 0.277,
+  "acc_text_only": 0.102,
+  "acc_diff": 0.17500000000000004,
+  "multimodal_ci_95": [
+    0.2494534420070102,
+    0.30586607658417714
+  ],
+  "text_ci_95": [
+    0.08393546004048681,
+    0.12244515106555802
+  ],
+  "multimodal_boot_ci_95": [
+    0.249,
+    0.305
+  ],
+  "text_boot_ci_95": [
+    0.083,
+    0.121
+  ],
+  "mcnemar_chi2": 129.93991416309012,
+  "mcnemar_p": 0.0,
+  "mcnemar_b": 29,
+  "mcnemar_c": 204,
+  "cohens_h": 0.45836664455729004
+}
