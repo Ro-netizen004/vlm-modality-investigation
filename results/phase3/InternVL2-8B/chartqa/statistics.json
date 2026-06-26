@@ -1,0 +1,29 @@
+{
+  "n": 2500,
+  "benchmark": "chartqa",
+  "model": "OpenGVLab/InternVL2-8B",
+  "acc_multimodal": 0.4452,
+  "acc_text_only": 0.0396,
+  "acc_diff": 0.40559999999999996,
+  "multimodal_ci_95": [
+    0.4255922974786789,
+    0.4649362339583191
+  ],
+  "text_ci_95": [
+    0.0322992572764159,
+    0.04800256436655015
+  ],
+  "multimodal_boot_ci_95": [
+    0.426,
+    0.4648
+  ],
+  "text_boot_ci_95": [
+    0.0324,
+    0.0472
+  ],
+  "mcnemar_chi2": 951.9192949907235,
+  "mcnemar_p": 0.0,
+  "mcnemar_b": 32,
+  "mcnemar_c": 1046,
+  "cohens_h": 1.0603060253953172
+}

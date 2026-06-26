@@ -1,0 +1,43 @@
+{
+  "n": 300,
+  "acc_text": 0.83,
+  "acc_img": 0.85,
+  "acc_drop": 0.020000000000000018,
+  "text_ci_95": [
+    0.7826148403295808,
+    0.8707268717065832
+  ],
+  "img_ci_95": [
+    0.804483559315973,
+    0.8884374775698745
+  ],
+  "text_boot_ci_95": [
+    0.7866666666666666,
+    0.87
+  ],
+  "img_boot_ci_95": [
+    0.8066666666666666,
+    0.89
+  ],
+  "mcnemar_chi2": 0.4807692307692308,
+  "mcnemar_p": 0.48807409316524786,
+  "mcnemar_b": 29,
+  "mcnemar_c": 23,
+  "cohens_h": -0.0545787357406633,
+  "mismatch_chi2": 207.6260162601626,
+  "mismatch_p": 4.527052046204368e-47,
+  "mismatch_counts": {
+    "text": 236,
+    "neither": 50,
+    "image": 10,
+    "ambiguous": 4
+  },
+  "mismatch_decidable": 246,
+  "text_preference": 0.959349593495935,
+  "image_preference": 0.04065040650406504,
+  "neither_rate": 0.16666666666666666,
+  "ambiguous_rate": 0.013333333333333334,
+  "invalid_rate": 0.0,
+  "benchmark": "svamp",
+  "model": "OpenGVLab/InternVL2-8B"
+}
