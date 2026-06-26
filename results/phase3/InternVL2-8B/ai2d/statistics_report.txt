@@ -1,0 +1,16 @@
+======================================================================
+  AI2D — PROTOCOL B RESULTS
+======================================================================
+  Model: OpenGVLab/InternVL2-8B
+  N = 3088
+
+  Multimodal (img+text) : 0.002  95% CI [0.001, 0.004]
+  Text-Only (no image) : 0.008  95% CI [0.005, 0.012]
+  Difference           : -0.006
+
+  McNemar p-value : 0.000277  ***
+  Cohen's h       : -0.088
+
+  Interpretation:
+    Vision HURTS — model performs worse with images.
+======================================================================

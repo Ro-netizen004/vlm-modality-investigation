@@ -1,0 +1,16 @@
+======================================================================
+  SCIENCEQA — PROTOCOL B RESULTS
+======================================================================
+  Model: OpenGVLab/InternVL2-8B
+  N = 2017
+
+  Multimodal (img+text) : 0.887  95% CI [0.872, 0.900]
+  Text-Only (no image) : 0.588  95% CI [0.567, 0.610]
+  Difference           : +0.298
+
+  McNemar p-value : 0.000000  ***
+  Cohen's h       : 0.707
+
+  Interpretation:
+    Vision HELPS — model uses visual info for better answers.
+======================================================================
