@@ -1,0 +1,44 @@
+{
+  "n": 500,
+  "acc_text": 0.178,
+  "acc_img": 0.186,
+  "acc_drop": 0.008000000000000007,
+  "text_ci_95": [
+    0.1454588067599035,
+    0.2144027420085713
+  ],
+  "img_ci_95": [
+    0.1528350917576797,
+    0.22292818241098197
+  ],
+  "text_boot_ci_95": [
+    0.144,
+    0.212
+  ],
+  "img_boot_ci_95": [
+    0.152,
+    0.22
+  ],
+  "mcnemar_chi2": 0.11538461538461539,
+  "mcnemar_p": 0.7340951823194757,
+  "mcnemar_b": 41,
+  "mcnemar_c": 37,
+  "cohens_h": -0.020734868068263634,
+  "mismatch_chi2": 57.94252873563219,
+  "mismatch_p": 2.6988865519036968e-14,
+  "mismatch_counts": {
+    "invalid": 40,
+    "neither": 361,
+    "text": 79,
+    "image": 8,
+    "ambiguous": 12
+  },
+  "mismatch_decidable": 87,
+  "text_preference": 0.9080459770114943,
+  "image_preference": 0.09195402298850575,
+  "neither_rate": 0.722,
+  "ambiguous_rate": 0.024,
+  "invalid_rate": 0.08,
+  "benchmark": "math",
+  "model": "Qwen/Qwen2-VL-2B-Instruct"
+}

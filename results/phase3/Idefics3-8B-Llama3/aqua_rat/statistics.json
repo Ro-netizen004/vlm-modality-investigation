@@ -1,0 +1,40 @@
+{
+  "n": 254,
+  "acc_text": 0.421259842519685,
+  "acc_img": 0.23228346456692914,
+  "acc_drop": -0.18897637795275588,
+  "text_ci_95": [
+    0.35980566625423527,
+    0.4845735335426933
+  ],
+  "img_ci_95": [
+    0.1817806601537448,
+    0.2891506266901638
+  ],
+  "text_boot_ci_95": [
+    0.36220472440944884,
+    0.484251968503937
+  ],
+  "img_boot_ci_95": [
+    0.18110236220472442,
+    0.28346456692913385
+  ],
+  "mcnemar_chi2": 23.010416666666668,
+  "mcnemar_p": 1.611259937583931e-06,
+  "mcnemar_b": 24,
+  "mcnemar_c": 72,
+  "cohens_h": 0.406881821768468,
+  "mismatch_chi2": 0.0,
+  "mismatch_p": 1.0,
+  "mismatch_counts": {
+    "invalid": 254
+  },
+  "mismatch_decidable": 0,
+  "text_preference": null,
+  "image_preference": null,
+  "neither_rate": 0.0,
+  "ambiguous_rate": 0.0,
+  "invalid_rate": 1.0,
+  "benchmark": "aqua_rat",
+  "model": "HuggingFaceM4/Idefics3-8B-Llama3"
+}

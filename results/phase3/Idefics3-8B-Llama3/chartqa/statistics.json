@@ -1,0 +1,29 @@
+{
+  "n": 2500,
+  "benchmark": "chartqa",
+  "model": "HuggingFaceM4/Idefics3-8B-Llama3",
+  "acc_multimodal": 0.4984,
+  "acc_text_only": 0.034,
+  "acc_diff": 0.46440000000000003,
+  "multimodal_ci_95": [
+    0.4786120541575491,
+    0.5181916982851462
+  ],
+  "text_ci_95": [
+    0.027246438322970055,
+    0.041871533842942
+  ],
+  "multimodal_boot_ci_95": [
+    0.4784,
+    0.5184
+  ],
+  "text_boot_ci_95": [
+    0.0268,
+    0.0416
+  ],
+  "mcnemar_chi2": 1131.7073170731708,
+  "mcnemar_p": 0.0,
+  "mcnemar_b": 14,
+  "mcnemar_c": 1175,
+  "cohens_h": 1.1966921438132658
+}

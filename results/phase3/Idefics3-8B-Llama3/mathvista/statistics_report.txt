@@ -1,0 +1,16 @@
+======================================================================
+  MATHVISTA — PROTOCOL B RESULTS
+======================================================================
+  Model: HuggingFaceM4/Idefics3-8B-Llama3
+  N = 1000
+
+  Multimodal (img+text) : 0.251  95% CI [0.224, 0.279]
+  Text-Only (no image) : 0.092  95% CI [0.075, 0.112]
+  Difference           : +0.159
+
+  McNemar p-value : 0.000000  ***
+  Cohen's h       : 0.433
+
+  Interpretation:
+    Vision HELPS — model uses visual info for better answers.
+======================================================================

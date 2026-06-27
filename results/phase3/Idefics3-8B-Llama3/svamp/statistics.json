@@ -1,0 +1,43 @@
+{
+  "n": 300,
+  "acc_text": 0.83,
+  "acc_img": 0.29333333333333333,
+  "acc_drop": -0.5366666666666666,
+  "text_ci_95": [
+    0.7826148403295808,
+    0.8707268717065832
+  ],
+  "img_ci_95": [
+    0.24241500506652966,
+    0.3483871666072454
+  ],
+  "text_boot_ci_95": [
+    0.7866666666666666,
+    0.87
+  ],
+  "img_boot_ci_95": [
+    0.24333333333333335,
+    0.3433333333333333
+  ],
+  "mcnemar_chi2": 146.28571428571428,
+  "mcnemar_p": 0.0,
+  "mcnemar_b": 7,
+  "mcnemar_c": 168,
+  "cohens_h": 1.1469304661721365,
+  "mismatch_chi2": 221.01777777777778,
+  "mismatch_p": 5.42478564566825e-50,
+  "mismatch_counts": {
+    "text": 224,
+    "neither": 71,
+    "ambiguous": 4,
+    "image": 1
+  },
+  "mismatch_decidable": 225,
+  "text_preference": 0.9955555555555555,
+  "image_preference": 0.0044444444444444444,
+  "neither_rate": 0.23666666666666666,
+  "ambiguous_rate": 0.013333333333333334,
+  "invalid_rate": 0.0,
+  "benchmark": "svamp",
+  "model": "HuggingFaceM4/Idefics3-8B-Llama3"
+}

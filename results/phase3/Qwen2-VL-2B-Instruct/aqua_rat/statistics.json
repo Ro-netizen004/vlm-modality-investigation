@@ -1,0 +1,40 @@
+{
+  "n": 254,
+  "acc_text": 0.2283464566929134,
+  "acc_img": 0.2440944881889764,
+  "acc_drop": 0.015748031496062992,
+  "text_ci_95": [
+    0.17819809673891093,
+    0.28495452835589624
+  ],
+  "img_ci_95": [
+    0.1925657144845988,
+    0.3017021697349778
+  ],
+  "text_boot_ci_95": [
+    0.17716535433070865,
+    0.2795275590551181
+  ],
+  "img_boot_ci_95": [
+    0.19291338582677164,
+    0.2952755905511811
+  ],
+  "mcnemar_chi2": 0.13636363636363635,
+  "mcnemar_p": 0.71192315069219,
+  "mcnemar_b": 35,
+  "mcnemar_c": 31,
+  "cohens_h": -0.037079782218706,
+  "mismatch_chi2": 0.0,
+  "mismatch_p": 1.0,
+  "mismatch_counts": {
+    "invalid": 254
+  },
+  "mismatch_decidable": 0,
+  "text_preference": null,
+  "image_preference": null,
+  "neither_rate": 0.0,
+  "ambiguous_rate": 0.0,
+  "invalid_rate": 1.0,
+  "benchmark": "aqua_rat",
+  "model": "Qwen/Qwen2-VL-2B-Instruct"
+}

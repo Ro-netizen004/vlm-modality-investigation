@@ -1,0 +1,16 @@
+======================================================================
+  MATHVISTA — PROTOCOL B RESULTS
+======================================================================
+  Model: Qwen/Qwen2-VL-2B-Instruct
+  N = 1000
+
+  Multimodal (img+text) : 0.207  95% CI [0.182, 0.233]
+  Text-Only (no image) : 0.060  95% CI [0.046, 0.077]
+  Difference           : +0.147
+
+  McNemar p-value : 0.000000  ***
+  Cohen's h       : 0.450
+
+  Interpretation:
+    Vision HELPS — model uses visual info for better answers.
+======================================================================

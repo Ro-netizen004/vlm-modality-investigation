@@ -1,0 +1,16 @@
+======================================================================
+  SCIENCEQA — PROTOCOL B RESULTS
+======================================================================
+  Model: HuggingFaceM4/Idefics3-8B-Llama3
+  N = 2017
+
+  Multimodal (img+text) : 0.854  95% CI [0.838, 0.869]
+  Text-Only (no image) : 0.636  95% CI [0.615, 0.657]
+  Difference           : +0.218
+
+  McNemar p-value : 0.000000  ***
+  Cohen's h       : 0.512
+
+  Interpretation:
+    Vision HELPS — model uses visual info for better answers.
+======================================================================

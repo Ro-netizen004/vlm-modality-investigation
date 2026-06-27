@@ -1,0 +1,29 @@
+{
+  "n": 2500,
+  "benchmark": "chartqa",
+  "model": "llava-hf/llava-onevision-qwen2-7b-ov-hf",
+  "acc_multimodal": 0.5712,
+  "acc_text_only": 0.032,
+  "acc_diff": 0.5392,
+  "multimodal_ci_95": [
+    0.551526109814155,
+    0.5907068838009037
+  ],
+  "text_ci_95": [
+    0.02545382723942921,
+    0.039670100566189394
+  ],
+  "multimodal_boot_ci_95": [
+    0.5516,
+    0.5904
+  ],
+  "text_boot_ci_95": [
+    0.0252,
+    0.0392
+  ],
+  "mcnemar_chi2": 1322.4555393586006,
+  "mcnemar_p": 0.0,
+  "mcnemar_b": 12,
+  "mcnemar_c": 1360,
+  "cohens_h": 1.3539750312785146
+}

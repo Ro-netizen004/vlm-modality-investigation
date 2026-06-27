@@ -1,0 +1,29 @@
+{
+  "n": 1000,
+  "benchmark": "mathvista",
+  "model": "HuggingFaceM4/Idefics3-8B-Llama3",
+  "acc_multimodal": 0.254,
+  "acc_text_only": 0.095,
+  "acc_diff": 0.159,
+  "multimodal_ci_95": [
+    0.2272772405192713,
+    0.28217930509803135
+  ],
+  "text_ci_95": [
+    0.07754020708165497,
+    0.11488484440445206
+  ],
+  "multimodal_boot_ci_95": [
+    0.227,
+    0.281
+  ],
+  "text_boot_ci_95": [
+    0.077,
+    0.114
+  ],
+  "mcnemar_chi2": 88.83985765124555,
+  "mcnemar_p": 0.0,
+  "mcnemar_b": 61,
+  "mcnemar_c": 220,
+  "cohens_h": 0.429766570585582
+}

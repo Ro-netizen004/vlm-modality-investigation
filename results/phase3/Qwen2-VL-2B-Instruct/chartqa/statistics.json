@@ -1,0 +1,29 @@
+{
+  "n": 2500,
+  "benchmark": "chartqa",
+  "model": "Qwen/Qwen2-VL-2B-Instruct",
+  "acc_multimodal": 0.5296,
+  "acc_text_only": 0.0152,
+  "acc_diff": 0.5144,
+  "multimodal_ci_95": [
+    0.5098097072898833,
+    0.5493208709147095
+  ],
+  "text_ci_95": [
+    0.010778287859497714,
+    0.020804008091060408
+  ],
+  "multimodal_boot_ci_95": [
+    0.51,
+    0.5488
+  ],
+  "text_boot_ci_95": [
+    0.0108,
+    0.0204
+  ],
+  "mcnemar_chi2": 1258.5556402439024,
+  "mcnemar_p": 0.0,
+  "mcnemar_b": 13,
+  "mcnemar_c": 1299,
+  "cohens_h": 1.3828254280795564
+}

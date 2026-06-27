@@ -1,0 +1,16 @@
+======================================================================
+  SCIENCEQA — PROTOCOL B RESULTS
+======================================================================
+  Model: Qwen/Qwen2-VL-2B-Instruct
+  N = 2017
+
+  Multimodal (img+text) : 0.717  95% CI [0.697, 0.737]
+  Text-Only (no image) : 0.561  95% CI [0.539, 0.583]
+  Difference           : +0.157
+
+  McNemar p-value : 0.000000  ***
+  Cohen's h       : 0.328
+
+  Interpretation:
+    Vision HELPS — model uses visual info for better answers.
+======================================================================

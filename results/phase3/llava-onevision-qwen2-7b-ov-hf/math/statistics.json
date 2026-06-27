@@ -1,0 +1,44 @@
+{
+  "n": 500,
+  "acc_text": 0.374,
+  "acc_img": 0.228,
+  "acc_drop": -0.146,
+  "text_ci_95": [
+    0.3314425290170624,
+    0.41805687632847527
+  ],
+  "img_ci_95": [
+    0.19192652490570936,
+    0.26732484979638094
+  ],
+  "text_boot_ci_95": [
+    0.332,
+    0.416
+  ],
+  "img_boot_ci_95": [
+    0.192,
+    0.266
+  ],
+  "mcnemar_chi2": 40.818897637795274,
+  "mcnemar_p": 1.6701018346054752e-10,
+  "mcnemar_b": 27,
+  "mcnemar_c": 100,
+  "cohens_h": 0.32045048076599925,
+  "mismatch_chi2": 141.09677419354838,
+  "mismatch_p": 1.5324313442896768e-32,
+  "mismatch_counts": {
+    "invalid": 39,
+    "text": 174,
+    "neither": 263,
+    "ambiguous": 12,
+    "image": 12
+  },
+  "mismatch_decidable": 186,
+  "text_preference": 0.9354838709677419,
+  "image_preference": 0.06451612903225806,
+  "neither_rate": 0.526,
+  "ambiguous_rate": 0.024,
+  "invalid_rate": 0.078,
+  "benchmark": "math",
+  "model": "llava-hf/llava-onevision-qwen2-7b-ov-hf"
+}
