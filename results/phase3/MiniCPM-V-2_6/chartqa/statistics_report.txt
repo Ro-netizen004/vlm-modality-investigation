@@ -1,0 +1,16 @@
+======================================================================
+  CHARTQA — PROTOCOL B RESULTS
+======================================================================
+  Model: openbmb/MiniCPM-V-2_6
+  N = 2500
+
+  Multimodal (img+text) : 0.573  95% CI [0.553, 0.592]
+  Text-Only (no image) : 0.033  95% CI [0.026, 0.041]
+  Difference           : +0.540
+
+  McNemar p-value : 0.000000  ***
+  Cohen's h       : 1.353
+
+  Interpretation:
+    Vision HELPS — model uses visual info for better answers.
+======================================================================

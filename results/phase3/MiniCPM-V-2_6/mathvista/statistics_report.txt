@@ -1,0 +1,16 @@
+======================================================================
+  MATHVISTA — PROTOCOL B RESULTS
+======================================================================
+  Model: openbmb/MiniCPM-V-2_6
+  N = 1000
+
+  Multimodal (img+text) : 0.303  95% CI [0.275, 0.333]
+  Text-Only (no image) : 0.095  95% CI [0.078, 0.115]
+  Difference           : +0.208
+
+  McNemar p-value : 0.000000  ***
+  Cohen's h       : 0.539
+
+  Interpretation:
+    Vision HELPS — model uses visual info for better answers.
+======================================================================

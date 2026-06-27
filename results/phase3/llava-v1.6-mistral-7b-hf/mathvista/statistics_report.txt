@@ -1,0 +1,16 @@
+======================================================================
+  MATHVISTA — PROTOCOL B RESULTS
+======================================================================
+  Model: llava-hf/llava-v1.6-mistral-7b-hf
+  N = 1000
+
+  Multimodal (img+text) : 0.106  95% CI [0.088, 0.127]
+  Text-Only (no image) : 0.059  95% CI [0.045, 0.075]
+  Difference           : +0.047
+
+  McNemar p-value : 0.000058  ***
+  Cohen's h       : 0.173
+
+  Interpretation:
+    Vision HELPS — model uses visual info for better answers.
+======================================================================

@@ -1,0 +1,43 @@
+{
+  "n": 300,
+  "acc_text": 0.6666666666666666,
+  "acc_img": 0.3433333333333333,
+  "acc_drop": -0.3233333333333333,
+  "text_ci_95": [
+    0.610207587060502,
+    0.7197951544704946
+  ],
+  "img_ci_95": [
+    0.28972113769119606,
+    0.4000754256351121
+  ],
+  "text_boot_ci_95": [
+    0.6133333333333333,
+    0.72
+  ],
+  "img_boot_ci_95": [
+    0.29,
+    0.39666666666666667
+  ],
+  "mcnemar_chi2": 76.16528925619835,
+  "mcnemar_p": 0.0,
+  "mcnemar_b": 12,
+  "mcnemar_c": 109,
+  "cohens_h": 0.6585380090477932,
+  "mismatch_chi2": 161.02424242424243,
+  "mismatch_p": 6.758775639492952e-37,
+  "mismatch_counts": {
+    "text": 164,
+    "neither": 131,
+    "ambiguous": 4,
+    "image": 1
+  },
+  "mismatch_decidable": 165,
+  "text_preference": 0.9939393939393939,
+  "image_preference": 0.006060606060606061,
+  "neither_rate": 0.43666666666666665,
+  "ambiguous_rate": 0.013333333333333334,
+  "invalid_rate": 0.0,
+  "benchmark": "svamp",
+  "model": "llava-hf/llava-v1.6-mistral-7b-hf"
+}

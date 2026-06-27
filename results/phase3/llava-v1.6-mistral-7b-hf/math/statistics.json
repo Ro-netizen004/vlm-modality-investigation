@@ -1,0 +1,44 @@
+{
+  "n": 500,
+  "acc_text": 0.144,
+  "acc_img": 0.082,
+  "acc_drop": -0.061999999999999986,
+  "text_ci_95": [
+    0.11440713117916833,
+    0.17787610802552106
+  ],
+  "img_ci_95": [
+    0.05948546373558823,
+    0.10959894311096288
+  ],
+  "text_boot_ci_95": [
+    0.114,
+    0.174
+  ],
+  "img_boot_ci_95": [
+    0.058,
+    0.108
+  ],
+  "mcnemar_chi2": 10.112359550561798,
+  "mcnemar_p": 0.0014727828467661075,
+  "mcnemar_b": 29,
+  "mcnemar_c": 60,
+  "cohens_h": 0.19761026846626628,
+  "mismatch_chi2": 21.06153846153846,
+  "mismatch_p": 4.44766451119477e-06,
+  "mismatch_counts": {
+    "invalid": 38,
+    "neither": 385,
+    "text": 51,
+    "ambiguous": 12,
+    "image": 14
+  },
+  "mismatch_decidable": 65,
+  "text_preference": 0.7846153846153846,
+  "image_preference": 0.2153846153846154,
+  "neither_rate": 0.77,
+  "ambiguous_rate": 0.024,
+  "invalid_rate": 0.076,
+  "benchmark": "math",
+  "model": "llava-hf/llava-v1.6-mistral-7b-hf"
+}

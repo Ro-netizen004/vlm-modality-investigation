@@ -1,0 +1,29 @@
+{
+  "n": 1000,
+  "benchmark": "mathvista",
+  "model": "openbmb/MiniCPM-V-2_6",
+  "acc_multimodal": 0.303,
+  "acc_text_only": 0.095,
+  "acc_diff": 0.208,
+  "multimodal_ci_95": [
+    0.2746319878756212,
+    0.33253298760457145
+  ],
+  "text_ci_95": [
+    0.07754020708165497,
+    0.11488484440445206
+  ],
+  "multimodal_boot_ci_95": [
+    0.274,
+    0.332
+  ],
+  "text_boot_ci_95": [
+    0.078,
+    0.113
+  ],
+  "mcnemar_chi2": 161.08646616541353,
+  "mcnemar_p": 0.0,
+  "mcnemar_b": 29,
+  "mcnemar_c": 237,
+  "cohens_h": 0.5391725266869289
+}

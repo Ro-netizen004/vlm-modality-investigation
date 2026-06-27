@@ -1,0 +1,42 @@
+{
+  "n": 300,
+  "acc_text": 0.8233333333333334,
+  "acc_img": 0.63,
+  "acc_drop": -0.19333333333333336,
+  "text_ci_95": [
+    0.7753731132586066,
+    0.8647743829185945
+  ],
+  "img_ci_95": [
+    0.5726294708887044,
+    0.6847750088238865
+  ],
+  "text_boot_ci_95": [
+    0.78,
+    0.8666666666666667
+  ],
+  "img_boot_ci_95": [
+    0.5766666666666667,
+    0.6833333333333333
+  ],
+  "mcnemar_chi2": 35.31521739130435,
+  "mcnemar_p": 2.8043233291086267e-09,
+  "mcnemar_b": 17,
+  "mcnemar_c": 75,
+  "cohens_h": 0.4401840728609785,
+  "mismatch_chi2": 248.0,
+  "mismatch_p": 7.087035192159762e-56,
+  "mismatch_counts": {
+    "text": 248,
+    "neither": 48,
+    "ambiguous": 4
+  },
+  "mismatch_decidable": 248,
+  "text_preference": 1.0,
+  "image_preference": 0.0,
+  "neither_rate": 0.16,
+  "ambiguous_rate": 0.013333333333333334,
+  "invalid_rate": 0.0,
+  "benchmark": "svamp",
+  "model": "openbmb/MiniCPM-V-2_6"
+}

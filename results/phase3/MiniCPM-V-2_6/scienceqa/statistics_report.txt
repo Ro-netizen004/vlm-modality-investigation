@@ -1,0 +1,16 @@
+======================================================================
+  SCIENCEQA — PROTOCOL B RESULTS
+======================================================================
+  Model: openbmb/MiniCPM-V-2_6
+  N = 2017
+
+  Multimodal (img+text) : 0.785  95% CI [0.767, 0.803]
+  Text-Only (no image) : 0.670  95% CI [0.649, 0.690]
+  Difference           : +0.116
+
+  McNemar p-value : 0.000000  ***
+  Cohen's h       : 0.261
+
+  Interpretation:
+    Vision HELPS — model uses visual info for better answers.
+======================================================================

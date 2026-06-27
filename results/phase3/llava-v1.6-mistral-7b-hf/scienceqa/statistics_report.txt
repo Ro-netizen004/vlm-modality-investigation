@@ -1,0 +1,16 @@
+======================================================================
+  SCIENCEQA — PROTOCOL B RESULTS
+======================================================================
+  Model: llava-hf/llava-v1.6-mistral-7b-hf
+  N = 2017
+
+  Multimodal (img+text) : 0.684  95% CI [0.663, 0.704]
+  Text-Only (no image) : 0.575  95% CI [0.553, 0.596]
+  Difference           : +0.109
+
+  McNemar p-value : 0.000000  ***
+  Cohen's h       : 0.226
+
+  Interpretation:
+    Vision HELPS — model uses visual info for better answers.
+======================================================================

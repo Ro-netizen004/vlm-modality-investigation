@@ -1,0 +1,16 @@
+======================================================================
+  CHARTQA — PROTOCOL B RESULTS
+======================================================================
+  Model: llava-hf/llava-v1.6-mistral-7b-hf
+  N = 2500
+
+  Multimodal (img+text) : 0.311  95% CI [0.293, 0.330]
+  Text-Only (no image) : 0.023  95% CI [0.018, 0.030]
+  Difference           : +0.288
+
+  McNemar p-value : 0.000000  ***
+  Cohen's h       : 0.878
+
+  Interpretation:
+    Vision HELPS — model uses visual info for better answers.
+======================================================================

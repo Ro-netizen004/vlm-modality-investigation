@@ -1,0 +1,16 @@
+======================================================================
+  AI2D — PROTOCOL B RESULTS
+======================================================================
+  Model: openbmb/MiniCPM-V-2_6
+  N = 3088
+
+  Multimodal (img+text) : 0.003  95% CI [0.001, 0.006]
+  Text-Only (no image) : 0.033  95% CI [0.027, 0.040]
+  Difference           : -0.030
+
+  McNemar p-value : 0.000000  ***
+  Cohen's h       : -0.256
+
+  Interpretation:
+    Vision HURTS — model performs worse with images.
+======================================================================

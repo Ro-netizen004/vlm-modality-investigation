@@ -1,0 +1,16 @@
+======================================================================
+  AI2D — PROTOCOL B RESULTS
+======================================================================
+  Model: llava-hf/llava-v1.6-mistral-7b-hf
+  N = 3088
+
+  Multimodal (img+text) : 0.000  95% CI [0.000, 0.001]
+  Text-Only (no image) : 0.015  95% CI [0.011, 0.020]
+  Difference           : -0.015
+
+  McNemar p-value : 0.000000  ***
+  Cohen's h       : -0.245
+
+  Interpretation:
+    Vision HURTS — model performs worse with images.
+======================================================================

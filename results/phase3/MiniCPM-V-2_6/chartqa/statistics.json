@@ -1,0 +1,29 @@
+{
+  "n": 2500,
+  "benchmark": "chartqa",
+  "model": "openbmb/MiniCPM-V-2_6",
+  "acc_multimodal": 0.5728,
+  "acc_text_only": 0.0328,
+  "acc_diff": 0.5399999999999999,
+  "multimodal_ci_95": [
+    0.5531333502473572,
+    0.592295889343504
+  ],
+  "text_ci_95": [
+    0.026170042131718335,
+    0.040551489578700195
+  ],
+  "multimodal_boot_ci_95": [
+    0.5536,
+    0.5924
+  ],
+  "text_boot_ci_95": [
+    0.026,
+    0.04
+  ],
+  "mcnemar_chi2": 1318.6963768115943,
+  "mcnemar_p": 0.0,
+  "mcnemar_b": 15,
+  "mcnemar_c": 1365,
+  "cohens_h": 1.3526904085108382
+}

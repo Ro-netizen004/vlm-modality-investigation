@@ -1,0 +1,29 @@
+{
+  "n": 2500,
+  "benchmark": "chartqa",
+  "model": "llava-hf/llava-v1.6-mistral-7b-hf",
+  "acc_multimodal": 0.3112,
+  "acc_text_only": 0.0232,
+  "acc_diff": 0.288,
+  "multimodal_ci_95": [
+    0.29308120499786616,
+    0.32976205034644746
+  ],
+  "text_ci_95": [
+    0.01766274555261042,
+    0.029889197007756416
+  ],
+  "multimodal_boot_ci_95": [
+    0.2928,
+    0.3296
+  ],
+  "text_boot_ci_95": [
+    0.0176,
+    0.0292
+  ],
+  "mcnemar_chi2": 662.7705128205129,
+  "mcnemar_p": 0.0,
+  "mcnemar_b": 30,
+  "mcnemar_c": 750,
+  "cohens_h": 0.8777719839993026
+}
