@@ -2,28 +2,28 @@
   "n": 1000,
   "benchmark": "mathvista",
   "model": "openbmb/MiniCPM-V-2_6",
-  "acc_multimodal": 0.303,
-  "acc_text_only": 0.095,
+  "acc_multimodal": 0.308,
+  "acc_text_only": 0.1,
   "acc_diff": 0.208,
   "multimodal_ci_95": [
-    0.2746319878756212,
-    0.33253298760457145
+    0.2794866299005828,
+    0.3376486619974949
   ],
   "text_ci_95": [
-    0.07754020708165497,
-    0.11488484440445206
+    0.08210533435558,
+    0.12028793651869264
   ],
   "multimodal_boot_ci_95": [
-    0.274,
-    0.332
+    0.279,
+    0.337
   ],
   "text_boot_ci_95": [
-    0.078,
-    0.113
+    0.082,
+    0.118
   ],
-  "mcnemar_chi2": 161.08646616541353,
+  "mcnemar_chi2": 157.53308823529412,
   "mcnemar_p": 0.0,
-  "mcnemar_b": 29,
-  "mcnemar_c": 237,
-  "cohens_h": 0.5391725266869289
+  "mcnemar_b": 32,
+  "mcnemar_c": 240,
+  "cohens_h": 0.5331706724509878
 }
