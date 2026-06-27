@@ -35,13 +35,13 @@ pip install transformers>=4.45.0 accelerate datasets evaluate scipy numpy pandas
 # ── Step 4: Clone the repo (if not already) ──
 echo ""
 echo "Step 4: Setting up repo..."
-REPO_DIR="$HOME/vlm-modality-research"
+REPO_DIR="$HOME/vlm-modality-investigation"
 if [ -d "$REPO_DIR" ]; then
     echo "Repo already exists at $REPO_DIR — pulling latest..."
     cd "$REPO_DIR" && git pull origin main
 else
     echo "Cloning repo..."
-    git clone https://github.com/Ro-netizen004/vlm-modality-research.git "$REPO_DIR"
+    git clone https://github.com/Ro-netizen004/vlm-modality-investigation.git "$REPO_DIR"
 fi
 
 # ── Step 5: Create output directory ──
