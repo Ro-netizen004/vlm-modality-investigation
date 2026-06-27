@@ -35,14 +35,16 @@ from src.noise import (
     NOISE_LEVELS as NOISE_CONFIGS,
 )
 
-# Full model registry (HF id + loader type). Subset via --models.
+# Full model registry (HF id + loader type) — must match configs/default.yaml.
 MODEL_REGISTRY = {
     "Qwen2-VL-2B-Instruct":          {"name": "Qwen/Qwen2-VL-2B-Instruct",          "type": "qwen"},
     "llava-v1.6-mistral-7b-hf":      {"name": "llava-hf/llava-v1.6-mistral-7b-hf",  "type": "llava"},
-    "Idefics3-8B-Llama3":            {"name": "HuggingFaceM4/Idefics3-8B-Llama3",   "type": "idefics3"},
+    "Qwen2.5-VL-7B-Instruct":        {"name": "Qwen/Qwen2.5-VL-7B-Instruct",        "type": "qwen"},
+    "Idefics3-8B-Llama3":            {"name": "HuggingFaceM4/Idefics3-8B-Llama3",   "type": "idefics"},
     "MiniCPM-V-2_6":                 {"name": "openbmb/MiniCPM-V-2_6",              "type": "minicpm"},
     "InternVL2-8B":                  {"name": "OpenGVLab/InternVL2-8B",             "type": "internvl"},
-    "llava-onevision-qwen2-7b-ov-hf":{"name": "llava-hf/llava-onevision-qwen2-7b-ov-hf", "type": "llava_ov"},
+    "llava-onevision-qwen2-7b-ov-hf":{"name": "llava-hf/llava-onevision-qwen2-7b-ov-hf", "type": "llava_onevision"},
+    "Phi-3.5-vision-instruct":       {"name": "microsoft/Phi-3.5-vision-instruct",  "type": "phi"},
 }
 
 # Default subset spans the resilience spectrum (vulnerable / middle / resilient).
@@ -143,7 +145,7 @@ def main():
 
         print(f"\n{'='*60}\n  {model_key}\n{'='*60}")
         vlm = VLMModel(model_name=mc["name"], model_type=mc["type"],
-                       max_new_tokens=256, torch_dtype="bfloat16")
+                       max_new_tokens=512, torch_dtype="bfloat16")
         vlm.load()
 
         baseline = run_text_baseline(

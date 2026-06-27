@@ -5,7 +5,7 @@
 #SBATCH --gpus=1
 #SBATCH --cpus-per-task=16
 #SBATCH --mem=128G
-#SBATCH --time=08:00:00
+#SBATCH --time=12:00:00
 #SBATCH --mail-user=rg21@usf.edu
 #SBATCH --mail-type=BEGIN,END,FAIL
 #SBATCH --output=logs/vlm_noise_%j.log
@@ -41,11 +41,12 @@ nvidia-smi
 
 cd "$REPO_DIR"
 
-# All 6 models, full 10 noise levels, 200-problem subset.
-# To run a faster subset, pass --models with fewer names.
+# 7 models (Phi-3.5 excluded for now), full 10 noise levels, 200-problem subset.
+# To add Phi back: append "Phi-3.5-vision-instruct" to the --models list.
 srun python scripts/run_noise_ablation.py \
-    --models Qwen2-VL-2B-Instruct llava-v1.6-mistral-7b-hf Idefics3-8B-Llama3 \
-             MiniCPM-V-2_6 InternVL2-8B llava-onevision-qwen2-7b-ov-hf \
+    --models Qwen2-VL-2B-Instruct llava-v1.6-mistral-7b-hf Qwen2.5-VL-7B-Instruct \
+             Idefics3-8B-Llama3 MiniCPM-V-2_6 InternVL2-8B \
+             llava-onevision-qwen2-7b-ov-hf \
     --num-problems 200 \
     --output-dir "$OUTPUT_DIR"
 
