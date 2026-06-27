@@ -34,9 +34,7 @@ Thumbs.db
 # Generated experiment outputs
 vlm_benchmark_outputs/
 rendered_images/
-
-# Local / Drive experiment outputs (pilot CSVs archived separately; Phase 1 → Drive)
-!results/README.md
+paper/
 
 # HF v2 upload staging (large; publish to Hub, do not commit)
 hf_gsm8k_v2_upload/
