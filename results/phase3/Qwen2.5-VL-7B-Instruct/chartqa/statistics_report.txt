@@ -1,0 +1,16 @@
+======================================================================
+  CHARTQA — PROTOCOL B RESULTS
+======================================================================
+  Model: Qwen/Qwen2.5-VL-7B-Instruct
+  N = 2500
+
+  Multimodal (img+text) : 0.650  95% CI [0.631, 0.669]
+  Text-Only (no image) : 0.022  95% CI [0.017, 0.029]
+  Difference           : +0.628
+
+  McNemar p-value : 0.000000  ***
+  Cohen's h       : 1.576
+
+  Interpretation:
+    Vision HELPS — model uses visual info for better answers.
+======================================================================
