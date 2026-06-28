@@ -1,0 +1,57 @@
+{
+  "model": "Qwen2-VL-2B-Instruct",
+  "n": 200,
+  "text_baseline": 0.53,
+  "levels": {
+    "0": {
+      "name": "clean",
+      "accuracy": 0.445,
+      "drop_vs_text": -0.08500000000000002
+    },
+    "1": {
+      "name": "jpeg_mild",
+      "accuracy": 0.45,
+      "drop_vs_text": -0.08000000000000002
+    },
+    "2": {
+      "name": "blur_light",
+      "accuracy": 0.42,
+      "drop_vs_text": -0.11000000000000004
+    },
+    "3": {
+      "name": "jpeg_heavy",
+      "accuracy": 0.455,
+      "drop_vs_text": -0.07500000000000001
+    },
+    "4": {
+      "name": "blur_noise",
+      "accuracy": 0.44,
+      "drop_vs_text": -0.09000000000000002
+    },
+    "5": {
+      "name": "heavy_degradation",
+      "accuracy": 0.23,
+      "drop_vs_text": -0.30000000000000004
+    },
+    "6": {
+      "name": "geometric",
+      "accuracy": 0.46,
+      "drop_vs_text": -0.07
+    },
+    "7": {
+      "name": "handwriting",
+      "accuracy": 0.455,
+      "drop_vs_text": -0.07500000000000001
+    },
+    "8": {
+      "name": "screenshot",
+      "accuracy": 0.465,
+      "drop_vs_text": -0.065
+    },
+    "9": {
+      "name": "worst_case",
+      "accuracy": 0.425,
+      "drop_vs_text": -0.10500000000000004
+    }
+  }
+}

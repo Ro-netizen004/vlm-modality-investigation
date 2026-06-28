@@ -1,0 +1,20 @@
+{
+  "level": 6,
+  "name": "geometric",
+  "description": "Rotation (3\u00b0) + perspective skew + shadow",
+  "accuracy": 0.46,
+  "error_distribution": {
+    "arithmetic_error": 106,
+    "correct": 92,
+    "no_number": 2
+  },
+  "ci_95": [
+    0.3894794300294834,
+    0.5317238980080443
+  ],
+  "boot_ci_95": [
+    0.39,
+    0.53
+  ],
+  "n": 200
+}
