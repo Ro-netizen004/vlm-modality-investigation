@@ -1,0 +1,16 @@
+======================================================================
+  AI2D — PROTOCOL B RESULTS
+======================================================================
+  Model: Qwen/Qwen2.5-VL-7B-Instruct
+  N = 3088
+
+  Multimodal (img+text) : 0.808  95% CI [0.794, 0.822]
+  Text-Only (no image) : 0.594  95% CI [0.577, 0.612]
+  Difference           : +0.214
+
+  McNemar p-value : 0.000000  ***
+  Cohen's h       : 0.474
+
+  Interpretation:
+    Vision HELPS — model uses visual info for better answers.
+======================================================================

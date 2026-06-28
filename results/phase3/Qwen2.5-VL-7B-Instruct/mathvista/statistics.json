@@ -1,0 +1,29 @@
+{
+  "n": 1000,
+  "benchmark": "mathvista",
+  "model": "Qwen/Qwen2.5-VL-7B-Instruct",
+  "acc_multimodal": 0.376,
+  "acc_text_only": 0.116,
+  "acc_diff": 0.26,
+  "multimodal_ci_95": [
+    0.34588107034591425,
+    0.4068513760241379
+  ],
+  "text_ci_95": [
+    0.09680595526975852,
+    0.13748675054956372
+  ],
+  "multimodal_boot_ci_95": [
+    0.346,
+    0.406
+  ],
+  "text_boot_ci_95": [
+    0.096,
+    0.136
+  ],
+  "mcnemar_chi2": 190.57102272727272,
+  "mcnemar_p": 0.0,
+  "mcnemar_b": 46,
+  "mcnemar_c": 306,
+  "cohens_h": 0.6250972593774085
+}
