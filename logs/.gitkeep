@@ -1,0 +1,2 @@
+# Keep this directory in git so SLURM --output=logs/... can write job logs.
+# Without it, freshly-cloned repos lack logs/ and jobs fail instantly (exit 53).
