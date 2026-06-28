@@ -262,7 +262,7 @@ def rescore_model(model_dir: str) -> dict:
 def main():
     parser = argparse.ArgumentParser(
         description="Rescore mismatch 'neither' cases using reasoning-trace analysis")
-    parser.add_argument("--results-dir", default="results",
+    parser.add_argument("--results-dir", default="results/phase1",
                         help="Directory containing per-model result folders")
     parser.add_argument("--model", default=None,
                         help="Run on a single model folder name only")

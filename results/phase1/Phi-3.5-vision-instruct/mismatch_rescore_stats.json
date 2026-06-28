@@ -1,0 +1,32 @@
+{
+  "model": "Phi-3.5-vision-instruct",
+  "n_total": 1319,
+  "original_counts": {
+    "text": 659,
+    "neither": 632,
+    "ambiguous": 15,
+    "image": 9,
+    "invalid": 4
+  },
+  "rescored_counts": {
+    "text": 659,
+    "text_reasoning": 405,
+    "image_reasoning": 151,
+    "neither": 76,
+    "ambiguous": 15,
+    "image": 9,
+    "invalid": 4
+  },
+  "neither_breakdown": {
+    "text_reasoning": 405,
+    "image_reasoning": 151,
+    "neither": 76
+  },
+  "text_total": 1064,
+  "image_total": 160,
+  "neither_final": 76,
+  "decidable": 1224,
+  "text_preference_rescored": 0.869281045751634,
+  "image_preference_rescored": 0.13071895424836602,
+  "neither_rate_rescored": 0.0576194086429113
+}

@@ -34,7 +34,6 @@ Thumbs.db
 # Generated experiment outputs
 vlm_benchmark_outputs/
 rendered_images/
-paper/
 
 # HF v2 upload staging (large; publish to Hub, do not commit)
 hf_gsm8k_v2_upload/

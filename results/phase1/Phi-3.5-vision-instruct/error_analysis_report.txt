@@ -1,0 +1,54 @@
+ERROR ANALYSIS — Phi-3.5-vision-instruct
+
+======================================================================
+  DISAGREEMENT ANALYSIS
+======================================================================
+  Total problems: 1319
+  Agreement rate: 78.5%
+  Text advantage (text right, image wrong): 174
+  Image advantage (image right, text wrong): 110
+
+  ── Both Correct: 849 problems ──
+    Avg reasoning steps  : 0.0
+    Avg numbers in Q     : 3.2
+    Avg question length  : 42 words
+    Avg answer magnitude : 3596
+    Multi-operation      : 0%
+    Has percentages      : 13%
+
+  ── Both Wrong: 186 problems ──
+    Avg reasoning steps  : 0.0
+    Avg numbers in Q     : 3.9
+    Avg question length  : 57 words
+    Avg answer magnitude : 28137
+    Multi-operation      : 0%
+    Has percentages      : 19%
+
+  ── Text-Only Correct (vision hurt): 174 problems ──
+    Avg reasoning steps  : 0.0
+    Avg numbers in Q     : 3.7
+    Avg question length  : 53 words
+    Avg answer magnitude : 2440
+    Multi-operation      : 0%
+    Has percentages      : 12%
+
+  ── Image-Only Correct (vision helped): 110 problems ──
+    Avg reasoning steps  : 0.0
+    Avg numbers in Q     : 3.7
+    Avg question length  : 51 words
+    Avg answer magnitude : 2709
+    Multi-operation      : 0%
+    Has percentages      : 17%
+
+======================================================================
+
+Correlations with modality gap:
+         feature  pearson_r  pearson_p  spearman_r  spearman_p
+       num_steps  -0.004097   0.881815   -0.004568    0.868351
+     num_numbers   0.018945   0.491801    0.023241    0.399008
+ question_length   0.066376   0.015908    0.058449    0.033792
+answer_magnitude  -0.005559   0.840151   -0.006007    0.827462
+ multi_operation        NaN        NaN         NaN         NaN
+   has_fractions  -0.006109   0.824577   -0.006109    0.824577
+ has_percentages  -0.032696   0.235372   -0.032696    0.235372
+  has_comparison   0.026769   0.331322    0.026769    0.331322

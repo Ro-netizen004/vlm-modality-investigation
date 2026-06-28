@@ -85,7 +85,7 @@ def run_model(model_dir: str) -> dict:
 
 def main():
     parser = argparse.ArgumentParser(description="Run error analysis across models")
-    parser.add_argument("--results-dir", default="results")
+    parser.add_argument("--results-dir", default="results/phase1")
     parser.add_argument("--models", nargs="+", default=DEFAULT_MODELS,
                         help="Model folder names to analyze")
     args = parser.parse_args()
