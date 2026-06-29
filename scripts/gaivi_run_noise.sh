@@ -42,11 +42,13 @@ nvidia-smi
 cd "$REPO_DIR"
 
 # 7 models (Phi-3.5 excluded for now), full 10 noise levels, 200-problem subset.
-# To add Phi back: append "Phi-3.5-vision-instruct" to the --models list.
+# Order prioritizes the paper's resilient-vs-vulnerable contrast trio
+# (Idefics3, InternVL2, MiniCPM) so they finish first; already-cached models
+# (Qwen2-VL-2B, LLaVA-1.6) are skipped instantly on resume.
 srun python scripts/run_noise_ablation.py \
-    --models Qwen2-VL-2B-Instruct llava-v1.6-mistral-7b-hf Qwen2.5-VL-7B-Instruct \
-             Idefics3-8B-Llama3 MiniCPM-V-2_6 InternVL2-8B \
-             llava-onevision-qwen2-7b-ov-hf \
+    --models Qwen2-VL-2B-Instruct llava-v1.6-mistral-7b-hf \
+             Idefics3-8B-Llama3 InternVL2-8B MiniCPM-V-2_6 \
+             Qwen2.5-VL-7B-Instruct llava-onevision-qwen2-7b-ov-hf \
     --num-problems 200 \
     --output-dir "$OUTPUT_DIR"
 
