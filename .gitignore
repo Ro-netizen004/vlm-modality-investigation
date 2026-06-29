@@ -46,3 +46,6 @@ render_samples/
 data/gsm8k_metadata*.csv
 data/render_config.json
 data/render_progress.json
+
+# Paper drafts — keep local until deliberate arXiv/submission
+paper/
