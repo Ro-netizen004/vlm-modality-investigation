@@ -1,0 +1,20 @@
+{
+  "level": 3,
+  "name": "jpeg_heavy",
+  "description": "Heavy JPEG compression (quality=15)",
+  "accuracy": 0.415,
+  "error_distribution": {
+    "arithmetic_error": 80,
+    "correct": 83,
+    "reasoning_error": 37
+  },
+  "ci_95": [
+    0.3459336681807803,
+    0.48662468561680267
+  ],
+  "boot_ci_95": [
+    0.345,
+    0.485
+  ],
+  "n": 200
+}

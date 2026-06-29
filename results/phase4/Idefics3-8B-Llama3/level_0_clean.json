@@ -1,0 +1,20 @@
+{
+  "level": 0,
+  "name": "clean",
+  "description": "Original PIL rendering (baseline)",
+  "accuracy": 0.295,
+  "error_distribution": {
+    "reasoning_error": 72,
+    "correct": 59,
+    "arithmetic_error": 69
+  },
+  "ci_95": [
+    0.23276878422312478,
+    0.3634231333179103
+  ],
+  "boot_ci_95": [
+    0.23,
+    0.36
+  ],
+  "n": 200
+}

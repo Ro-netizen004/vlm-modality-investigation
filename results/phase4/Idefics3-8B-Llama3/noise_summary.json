@@ -1,0 +1,57 @@
+{
+  "model": "Idefics3-8B-Llama3",
+  "n": 200,
+  "text_baseline": 0.79,
+  "levels": {
+    "0": {
+      "name": "clean",
+      "accuracy": 0.295,
+      "drop_vs_text": -0.49500000000000005
+    },
+    "1": {
+      "name": "jpeg_mild",
+      "accuracy": 0.39,
+      "drop_vs_text": -0.4
+    },
+    "2": {
+      "name": "blur_light",
+      "accuracy": 0.4,
+      "drop_vs_text": -0.39
+    },
+    "3": {
+      "name": "jpeg_heavy",
+      "accuracy": 0.415,
+      "drop_vs_text": -0.37500000000000006
+    },
+    "4": {
+      "name": "blur_noise",
+      "accuracy": 0.1,
+      "drop_vs_text": -0.6900000000000001
+    },
+    "5": {
+      "name": "heavy_degradation",
+      "accuracy": 0.025,
+      "drop_vs_text": -0.765
+    },
+    "6": {
+      "name": "geometric",
+      "accuracy": 0.09,
+      "drop_vs_text": -0.7000000000000001
+    },
+    "7": {
+      "name": "handwriting",
+      "accuracy": 0.21,
+      "drop_vs_text": -0.5800000000000001
+    },
+    "8": {
+      "name": "screenshot",
+      "accuracy": 0.335,
+      "drop_vs_text": -0.455
+    },
+    "9": {
+      "name": "worst_case",
+      "accuracy": 0.07,
+      "drop_vs_text": -0.72
+    }
+  }
+}

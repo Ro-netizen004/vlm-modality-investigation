@@ -1,0 +1,21 @@
+{
+  "level": 9,
+  "name": "worst_case",
+  "description": "Combined: blur + noise + rotation + JPEG(20) + low contrast",
+  "accuracy": 0.07,
+  "error_distribution": {
+    "arithmetic_error": 94,
+    "correct": 14,
+    "reasoning_error": 91,
+    "no_number": 1
+  },
+  "ci_95": [
+    0.038795570429562824,
+    0.11465973353711054
+  ],
+  "boot_ci_95": [
+    0.035,
+    0.105
+  ],
+  "n": 200
+}

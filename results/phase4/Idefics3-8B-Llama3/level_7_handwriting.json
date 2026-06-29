@@ -1,0 +1,21 @@
+{
+  "level": 7,
+  "name": "handwriting",
+  "description": "Handwriting-style font + paper texture",
+  "accuracy": 0.21,
+  "error_distribution": {
+    "correct": 42,
+    "arithmetic_error": 66,
+    "reasoning_error": 91,
+    "vision_error": 1
+  },
+  "ci_95": [
+    0.15573975672412838,
+    0.27306870461379884
+  ],
+  "boot_ci_95": [
+    0.155,
+    0.26512499999999817
+  ],
+  "n": 200
+}
