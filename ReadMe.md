@@ -1,182 +1,134 @@
-# Effect of Input Modality on Mathematical Reasoning in Vision-Language Models
+# Text or Image? Task-Conditional Modality Dominance in Vision-Language Models
 
-Presented at the **USF UR2PhD Symposium 2025** · [View Poster](poster/VLM_GSM8K_Poster.pdf)
+We study **which modality vision-language models (VLMs) rely on** when their text
+and image inputs conflict — and find the answer depends on the task.
 
----
+> **Key finding.** Modality dominance is *task-conditional*. When an image merely
+> re-renders the text (vision is redundant), models follow the **text** 87–100% of
+> the time. When the image carries information the text lacks — charts, diagrams —
+> models correctly rely on the **image** (+10–54pp). VLMs are not text-first by
+> design; they follow whichever modality is most informative for the task.
 
-## Start here
-
-**Confused by two folders (`src/` vs `vlm_benchmark/`)?**  
-→ **[`docs/GETTING_STARTED.md`](docs/GETTING_STARTED.md)** — which version to use, in one page.
-
-| I want to… | Go to |
-|------------|-------|
-| Run Phase 1 on Colab (8 models, n=1319) | [`notebooks/Run_All_Models_Free.ipynb`](notebooks/Run_All_Models_Free.ipynb) + [`docs/COLAB.md`](docs/COLAB.md) |
-| Understand architecture | [`docs/CANONICAL.md`](docs/CANONICAL.md) |
-| Code with AI / avoid duplicate pipelines | [`CLAUDE.md`](CLAUDE.md) |
-| Reproduce 2025 symposium pilot only | [`vlm_benchmark/README.md`](vlm_benchmark/README.md) + HF v1 dataset |
-
-**Contributors:** `git pull` before coding. Do not create parallel experiment frameworks.
+A core methodological contribution is the **mismatch condition**: we pair the
+image of problem *i* with the text of problem *i+1*, directly measuring modality
+preference under conflict rather than inferring it from accuracy differences.
 
 ---
 
-## Project status
+## Status
 
-| Track | Status | Images | Scale |
-|-------|--------|--------|-------|
-| **Full study (current)** | Phase 1 in progress | **v2** — Drive → HF upload | n=1319, 8 models |
-| **Symposium pilot (legacy)** | Complete — poster | **v1** — [HF dataset](https://huggingface.co/datasets/RodelaG/gsm8k-rendered-vlm) | n=100, 2 models |
+| Phase | Scope | Status |
+|-------|-------|--------|
+| **1 — GSM8K** | 8 VLMs, 3 conditions (text / image / mismatch) | Complete |
+| **2 — Error analysis** | Disagreement + difficulty correlates, 8 models | Complete |
+| **3 — Multi-benchmark** | SVAMP, MATH-500, AQuA-RAT (Protocol A) + MathVista, AI2D, ChartQA, ScienceQA (Protocol B) | In progress |
+| **4 — Noise ablation** | Rendered-image robustness across 10 corruption levels | In progress |
+| **5 — Prompt sensitivity** | Can prompting shift modality preference? | Planned |
+| **6 — Mechanistic** | Attention analysis of text vs image tokens | Planned |
 
-**Do not mix v1 and v2 results in the same table.**
-
----
-
-## Overview
-
-We study how **input modality** affects math reasoning in VLMs: same model, different inputs (text-only, rendered image, mismatch), measuring accuracy drops and text dominance under conflict.
-
-### Symposium pilot findings (n=100, dataset v1)
-
-- Visual input drops accuracy (−25pp Qwen2-VL-2B, −19pp LLaVA-1.6)
-- Mismatch: models follow text in >75% of cases
-- See tables below — **pilot only**, not the full-scale study
-
-### Full study (current)
-
-- GSM8K test split (1319), McNemar + bootstrap CIs + Cohen's h
-- 8 open VLMs via Colab (`src/` pipeline)
-- See Google Drive `vlm_research_results/` for new numbers
+**Target venue:** EACL 2027 (ARR, Aug 3 2026).
 
 ---
 
-## How to run (current)
+## Headline results (GSM8K, N=1319)
 
-### Colab — Phase 1 (recommended)
+**Text-only vs rendered-image accuracy** — two clear groups emerge:
 
-1. Open [`notebooks/Run_All_Models_Free.ipynb`](notebooks/Run_All_Models_Free.ipynb) on [Colab](https://colab.research.google.com) from GitHub
-2. **Runtime → T4 GPU**
-3. Mount Drive → `vlm_research_results/`
-4. Set `MODELS_TO_RUN` per session: `[0,1,2]` → `[3,4,5]` → `[6,7]`
+| Group | Models | Accuracy change |
+|-------|--------|-----------------|
+| Resilient | Qwen2.5-VL-7B, InternVL2-8B, Qwen2-VL-2B | ≤ 3pp (not significant) |
+| Vulnerable | Idefics3-8B, LLaVA-1.6, LLaVA-OneVision, MiniCPM, Phi-3.5 | 5–49pp drop (p<0.001) |
 
-Full steps: [`docs/COLAB.md`](docs/COLAB.md)
+**Mismatch condition** — text preference (decidable trials, after reasoning-trace
+rescore): **87–100%** across all eight models. Phi-3.5 is the notable exception
+that engages the image more often (87%); the rest are 96–100%.
 
-### CLI
+**Protocol B (natural visual benchmarks)** — the pattern reverses: image beats
+text-only by **+10–54pp** on every model and benchmark (largest on ChartQA).
 
+---
+
+## Repository layout
+
+```
+src/                  # models (VLMModel), evaluation, multi-benchmark engine, noise
+scripts/              # benchmark runners, rescore, error analysis, GAIVI/SLURM
+notebooks/            # Colab/Kaggle runners + analysis notebooks
+configs/              # model + rendering configuration
+results/
+├── phase1/<model>/   # GSM8K results + per-model analysis (8 models)
+├── phase3/<model>/   # multi-benchmark results (Protocol A/B)
+└── phase4/<model>/   # noise ablation results
+docs/                 # CANONICAL.md (architecture), dataset specs, onboarding
+vlm_benchmark/        # legacy symposium-pilot package (kept for reproducibility)
+```
+
+> New contributors: read [`docs/CANONICAL.md`](docs/CANONICAL.md) and
+> [`CLAUDE.md`](CLAUDE.md) first; `git pull` before coding; do not create parallel
+> experiment frameworks.
+
+---
+
+## How to run
+
+**CLI (local / cluster):**
 ```bash
 pip install -r requirements.txt
-python scripts/run_benchmark.py --config configs/default.yaml --num-problems 10
-python scripts/run_multi_benchmark.py --benchmarks gsm8k,svamp --num-problems 50
+
+# GSM8K, 3 conditions, canonical HF images
+python scripts/run_benchmark.py --config configs/default.yaml --hf-images
+
+# multi-benchmark (Protocol A/B)
+python scripts/run_multi_benchmark.py --benchmarks gsm8k,svamp
+
+# post-processing: reasoning-trace rescore + error analysis
+python scripts/rescore_mismatch_reasoning.py --model <name>
+python scripts/run_error_analysis.py --models <name>
 ```
 
-### GSM8K conditions (current Phase 1)
-
-| Condition | Description |
-|-----------|-------------|
-| Text-only | Vision disabled, text prompt |
-| Rendered image | Image only (`src/rendering.py` protocol) |
-| Mismatch | Imageᵢ + textᵢ₊₁ |
-
-Aligned text+image exists only in legacy `vlm_benchmark/` (not Phase 1 notebook).
-
-### McNemar (paired conditions)
-
-```bash
-python scripts/compare_mcnemar.py results/a.csv --col-a correct_text --csv-b results/b.csv --col-b correct_rendered
-```
+**Cluster (SLURM / GAIVI):** see `scripts/gaivi_*.sh`.
+**Colab:** [`notebooks/Run_All_Models_Free.ipynb`](notebooks/Run_All_Models_Free.ipynb) (see [`docs/COLAB.md`](docs/COLAB.md)).
 
 ---
 
-## Datasets
+## Datasets (HuggingFace)
 
-### Phase 1 — GSM8K (current)
+All rendered datasets are public under
+[`vlm-modality-research`](https://huggingface.co/vlm-modality-research):
 
-- **HF:** [vlm-modality-research/gsm8k-rendered-vlm-v2](https://huggingface.co/datasets/vlm-modality-research/gsm8k-rendered-vlm-v2)
-- **Columns:** `problem_id`, `question`, `answer`, `split`, `image`
-- **Renderer:** `src/rendering.py` — 900px, raw question, `q000.png` naming
+| Dataset | Problems |
+|---------|----------|
+| [`gsm8k-rendered-vlm-v2`](https://huggingface.co/datasets/vlm-modality-research/gsm8k-rendered-vlm-v2) | 1,319 |
+| [`svamp-rendered-vlm-v1`](https://huggingface.co/datasets/vlm-modality-research/svamp-rendered-vlm-v1) | 300 |
+| [`aqua-rat-rendered-vlm-v1`](https://huggingface.co/datasets/vlm-modality-research/aqua-rat-rendered-vlm-v1) | 254 |
+| [`math-rendered-vlm-v1`](https://huggingface.co/datasets/vlm-modality-research/math-rendered-vlm-v1) | 500 |
 
-### Phase 3 — Multi-benchmark rendered datasets
-
-| Dataset | HuggingFace | Problems |
-|---------|-------------|---------|
-| SVAMP | [vlm-modality-research/svamp-rendered-vlm-v1](https://huggingface.co/datasets/vlm-modality-research/svamp-rendered-vlm-v1) | 300 |
-| AQuA-RAT | [vlm-modality-research/aqua-rat-rendered-vlm-v1](https://huggingface.co/datasets/vlm-modality-research/aqua-rat-rendered-vlm-v1) | 254 |
-| MATH-500 | [vlm-modality-research/math-rendered-vlm-v1](https://huggingface.co/datasets/vlm-modality-research/math-rendered-vlm-v1) | 500 |
-
-All datasets include `problem_id`, `question`, `answer`, `split`, `image`. Use `--hf-images` with `run_benchmark.py` to load canonical images instead of re-rendering locally.
-
-### v1 — symposium pilot (legacy)
-
-**https://huggingface.co/datasets/RodelaG/gsm8k-rendered-vlm**
-
-| Artifact | Description |
-|----------|-------------|
-| `rendered_images/` | `q0000.png` … `q1318.png` |
-| `data/gsm8k_metadata_clean.csv` | Metadata |
-| `data/render_config.json` | 672px, "Solve this step-by-step" prefix |
-
-Regenerate: `python scripts/render_gsm8k.py` · Details: [`docs/DATASET_README.md`](docs/DATASET_README.md)
+Each includes `problem_id`, `question`, `answer`, `split`, `image`. Noise-corruption
+images (Phase 4) are regenerated deterministically from a fixed seed (`src/noise.py`),
+not stored.
 
 ---
 
-## Repository structure
+## Methods
 
-```
-vlm-modality-research/
-├── CLAUDE.md                 # AI assistant rules
-├── docs/
-│   ├── GETTING_STARTED.md    # ← read this if confused
-│   ├── CANONICAL.md          # architecture truth
-│   ├── COLAB.md
-│   ├── FRAMEWORK.md
-│   └── DATASET_README.md
-├── src/                      # CURRENT — models, eval, benchmarks
-├── configs/default.yaml      # CURRENT — 8 models, render settings
-├── notebooks/
-│   ├── Run_All_Models_Free.ipynb   # CURRENT — Phase 1
-│   └── README.md             # which notebook when
-├── scripts/
-│   ├── run_benchmark.py      # CURRENT — uses src/
-│   ├── run_multi_benchmark.py
-│   ├── compare_mcnemar.py
-│   └── render_gsm8k.py       # LEGACY — v1 images only
-├── vlm_benchmark/            # LEGACY — symposium package
-├── results/                  # Pilot CSVs (n=100) — do not mix with Drive
-└── poster/
-```
-
----
-
-## Pilot results (symposium, n=100, v1)
-
-**Table 1: Zero-Shot Accuracy**
-
-| Model | Text-Only | Rendered Image | Drop |
-|-------|-----------|----------------|------|
-| Qwen2-VL-2B | 55% | 30% | −25pp |
-| LLaVA-1.6-7B | 40% | 21% | −19pp |
-
-**Table 2: Modality Preference Under Conflict**
-
-| Model | Follows Image | Follows Text | Equal |
-|-------|--------------|--------------|-------|
-| Qwen2-VL-2B | 20 | 79 | 1 |
-| LLaVA-1.6-7B | 23 | 76 | 0 |
-
----
-
-## Evaluation
-
-- GSM8K: extract `#### <answer>` or last number; integer match after rounding
-- Errors: `correct`, `arithmetic_error`, `reasoning_error`, `no_number`, `vision_error`
-- Full study adds: bootstrap CIs, McNemar, Cohen's h (`src/evaluation.py`)
+- **Conditions:** text-only, rendered-image, mismatch (image_i + text_{i+1})
+- **Scoring:** numeric match; 5-category mismatch (image / text / neither /
+  ambiguous / invalid); reasoning-trace rescore of *neither* trials
+- **Statistics:** McNemar's test, bootstrap + Clopper-Pearson CIs, Cohen's *h*
+  (`src/evaluation.py`)
+- **Models:** 8 open VLMs (2B–8B), greedy decoding, bfloat16, no quantization
 
 ---
 
 ## Authors
 
-**Rodela Ghosh** · University of South Florida  
+**Rodela Ghosh** · University of South Florida
 **Aviral Gupta** · University of South Florida
 
 ## Acknowledgements
 
-PALM Lab, UR2PhD program, mentors Ocean Monjur and Shrestha Datta, PI Anshuman Chhabra.
+This project began as a USF UR2PhD symposium pilot in PALM Lab, and we thank
+Anshuman Chhabra, Ocean Monjur, and Shrestha Datta for their mentorship during
+that phase. The current full-scale study is carried out in the Computing
+Intelligence and Security Lab (CISL) at USF; we thank Prof. Guangjing Wang for
+providing GPU resources on the GAIVI cluster.
