@@ -1,0 +1,21 @@
+{
+  "level": 1,
+  "name": "jpeg_mild",
+  "description": "Mild JPEG compression (quality=50)",
+  "accuracy": 0.325,
+  "error_distribution": {
+    "correct": 65,
+    "arithmetic_error": 129,
+    "reasoning_error": 5,
+    "no_number": 1
+  },
+  "ci_95": [
+    0.26062551475361523,
+    0.3946537063048076
+  ],
+  "boot_ci_95": [
+    0.26,
+    0.39
+  ],
+  "n": 200
+}

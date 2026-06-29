@@ -1,0 +1,57 @@
+{
+  "model": "llava-v1.6-mistral-7b-hf",
+  "n": 200,
+  "text_baseline": 0.43,
+  "levels": {
+    "0": {
+      "name": "clean",
+      "accuracy": 0.305,
+      "drop_vs_text": -0.125
+    },
+    "1": {
+      "name": "jpeg_mild",
+      "accuracy": 0.325,
+      "drop_vs_text": -0.10499999999999998
+    },
+    "2": {
+      "name": "blur_light",
+      "accuracy": 0.32,
+      "drop_vs_text": -0.10999999999999999
+    },
+    "3": {
+      "name": "jpeg_heavy",
+      "accuracy": 0.315,
+      "drop_vs_text": -0.11499999999999999
+    },
+    "4": {
+      "name": "blur_noise",
+      "accuracy": 0.31,
+      "drop_vs_text": -0.12
+    },
+    "5": {
+      "name": "heavy_degradation",
+      "accuracy": 0.005,
+      "drop_vs_text": -0.425
+    },
+    "6": {
+      "name": "geometric",
+      "accuracy": 0.25,
+      "drop_vs_text": -0.18
+    },
+    "7": {
+      "name": "handwriting",
+      "accuracy": 0.3,
+      "drop_vs_text": -0.13
+    },
+    "8": {
+      "name": "screenshot",
+      "accuracy": 0.295,
+      "drop_vs_text": -0.135
+    },
+    "9": {
+      "name": "worst_case",
+      "accuracy": 0.22,
+      "drop_vs_text": -0.21
+    }
+  }
+}
