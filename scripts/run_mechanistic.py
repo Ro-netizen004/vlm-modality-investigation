@@ -85,7 +85,8 @@ def run_model(model_key, questions, references, image_dir, n, out_root):
     print(f"\n{'='*60}\n  {model_key}\n{'='*60}")
 
     vlm = VLMModel(model_name=mc["name"], model_type=mc["type"],
-                   max_new_tokens=256, torch_dtype="bfloat16")
+                   max_new_tokens=256, torch_dtype="bfloat16",
+                   attn_implementation="eager")  # needed for output_attentions
     vlm.load()
     mt = mc["type"]
     summary = {"model": model_key, "n": n}

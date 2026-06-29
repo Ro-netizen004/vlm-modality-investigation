@@ -58,12 +58,15 @@ class VLMModel:
     """Unified interface for VLM inference across architectures."""
 
     def __init__(self, model_name, model_type, max_new_tokens=256,
-                 torch_dtype="bfloat16", quantize=None):
+                 torch_dtype="bfloat16", quantize=None, attn_implementation=None):
         self.model_name = model_name
         self.model_type = model_type
         self.max_new_tokens = max_new_tokens
         self.dtype = getattr(torch, torch_dtype)
         self.quantize = quantize
+        # Set to "eager" when attention weights are needed (output_attentions=True);
+        # the default SDPA backend returns None for attentions.
+        self.attn_implementation = attn_implementation
         self.model = None
         self.processor = None
         self.tokenizer = None  # some models need a separate tokenizer
@@ -113,6 +116,8 @@ class VLMModel:
         kwargs = {"device_map": "auto", "torch_dtype": self.dtype, "trust_remote_code": True}
         if quant_config:
             kwargs["quantization_config"] = quant_config
+        if self.attn_implementation:
+            kwargs["attn_implementation"] = self.attn_implementation
         self.model = AutoModelForImageTextToText.from_pretrained(self.model_name, **kwargs)
         self.model.eval()
 
