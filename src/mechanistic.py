@@ -13,6 +13,7 @@ affects mathematical reasoning:
 import re
 import torch
 import numpy as np
+import pandas as pd
 import matplotlib.pyplot as plt
 from PIL import Image
 from typing import Dict, List, Optional, Tuple
