@@ -1,35 +1,35 @@
 #!/bin/bash -l
-#SBATCH --job-name=vlm-mech
+#SBATCH --job-name=vlm-legib
 #SBATCH -p CISL
 #SBATCH -w GPU53
 #SBATCH --gpus=1
 #SBATCH --cpus-per-task=16
 #SBATCH --mem=128G
-#SBATCH --time=02:00:00
+#SBATCH --time=12:00:00
 #SBATCH --mail-user=rg21@usf.edu
 #SBATCH --mail-type=BEGIN,END,FAIL
-#SBATCH --output=logs/vlm_mech_%j.log
-#SBATCH --error=logs/vlm_mech_%j.err
+#SBATCH --output=logs/vlm_legib_%j.log
+#SBATCH --error=logs/vlm_legib_%j.err
 
-# ── Phase 6: Mechanistic Analysis — GAIVI GPU53 ──
-# Attention-to-image, OCR quality, and hidden-state similarity on a small
-# GSM8K subset. Compute-light: 1-2 models in well under an hour (2h limit is
-# generous headroom).
+# ── Legibility experiment — mismatch condition x noise levels ──
+# Measures whether modality (text) preference shifts as the image degrades.
+# Reuses the Phase 4 noisy images (results/phase4/images) if present.
 #
 # Usage:
 #   cd ~/vlm-modality-investigation
-#   sbatch scripts/gaivi_run_mechanistic.sh
+#   sbatch scripts/gaivi_run_legibility.sh
 
 conda activate vlm
 
 REPO_DIR="$HOME/vlm-modality-investigation"
-OUTPUT_DIR="$HOME/vlm_research_results/phase6"
+OUTPUT_DIR="$HOME/vlm_research_results/phase6_legibility"
+NOISE_IMAGES="$HOME/vlm_research_results/phase4/images"
 export HF_HOME="${HF_HOME:-/data/rg21/hf_cache}"
 
 mkdir -p "$OUTPUT_DIR" "$REPO_DIR/logs" "$HF_HOME"
 
 echo "============================================"
-echo "  Phase 6: Mechanistic Analysis — GAIVI"
+echo "  Legibility experiment — GAIVI"
 echo "  Node:   $(hostname)"
 echo "  Date:   $(date)"
 echo "  Output: $OUTPUT_DIR"
@@ -38,11 +38,11 @@ nvidia-smi
 
 cd "$REPO_DIR"
 
-# Start with Qwen2-VL-2B (clean attention access). Add Qwen2.5-VL-7B once the
-# pipeline is confirmed working.
-srun python scripts/run_mechanistic.py \
-    --models Qwen2-VL-2B-Instruct \
-    --num-problems 50 \
+# Start with the two anchors (vulnerable + resilient). Add more models as needed.
+srun python scripts/run_legibility.py \
+    --models Idefics3-8B-Llama3 InternVL2-8B \
+    --num-problems 200 \
+    --noise-image-dir "$NOISE_IMAGES" \
     --output-dir "$OUTPUT_DIR"
 
 echo ""

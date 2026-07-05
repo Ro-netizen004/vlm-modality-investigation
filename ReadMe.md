@@ -21,12 +21,17 @@ preference under conflict rather than inferring it from accuracy differences.
 |-------|-------|--------|
 | **1 — GSM8K** | 8 VLMs, 3 conditions (text / image / mismatch) | Complete |
 | **2 — Error analysis** | Disagreement + difficulty correlates, 8 models | Complete |
-| **3 — Multi-benchmark** | SVAMP, MATH-500, AQuA-RAT (Protocol A) + MathVista, AI2D, ChartQA, ScienceQA (Protocol B) | In progress |
-| **4 — Noise ablation** | Rendered-image robustness across 10 corruption levels | In progress |
-| **5 — Prompt sensitivity** | Can prompting shift modality preference? | Planned |
-| **6 — Mechanistic** | Attention analysis of text vs image tokens | Planned |
+| **3 — Multi-benchmark** | SVAMP, MATH-500, AQuA-RAT (Protocol A) + MathVista, AI2D, ChartQA, ScienceQA (Protocol B) | 7/8 models complete |
+| **4 — Noise ablation** | Rendered-image robustness across 10 corruption levels | 4-model contrast (resilient vs vulnerable) |
+| **5 — Prompt sensitivity** | Can prompting shift modality preference? | In progress |
+| **6 — Legibility** | Modality preference under image degradation (mismatch × noise): does text preference track legibility, or is it a fixed bias? | In progress |
 
-**Target venue:** EACL 2027 (ARR, Aug 3 2026).
+**Target venue:** EACL 2027 (ARR, Aug 3 2026) — main track, with Findings as the
+realistic landing given a mature, fast-moving subfield. Positioned as a
+*systematic empirical study* of modality preference in reasoning, competing on
+breadth and rigor rather than a single novel mechanism. Closely related work
+(conflict: Hua et al., Nguyen et al., Deng et al., Pezeshkpour et al.;
+robustness: VLM-RobustBench, Common Corruptions) is cited and differentiated.
 
 ---
 
@@ -44,7 +49,8 @@ rescore): **87–100%** across all eight models. Phi-3.5 is the notable exceptio
 that engages the image more often (87%); the rest are 96–100%.
 
 **Protocol B (natural visual benchmarks)** — the pattern reverses: image beats
-text-only by **+10–54pp** on every model and benchmark (largest on ChartQA).
+text-only by **+10–63pp** on every model and benchmark (largest on ChartQA, where
+text-only accuracy is near zero).
 
 ---
 
@@ -57,8 +63,10 @@ notebooks/            # Colab/Kaggle runners + analysis notebooks
 configs/              # model + rendering configuration
 results/
 ├── phase1/<model>/   # GSM8K results + per-model analysis (8 models)
-├── phase3/<model>/   # multi-benchmark results (Protocol A/B)
-└── phase4/<model>/   # noise ablation results
+├── phase2_error_analysis_summary.json   # cross-model disagreement analysis
+├── phase3/<model>/   # multi-benchmark results (Protocol A/B, 7 models)
+├── phase4/<model>/   # noise ablation results (4-model contrast)
+└── phase6_legibility/<model>/           # modality preference vs image legibility
 docs/                 # CANONICAL.md (architecture), dataset specs, onboarding
 vlm_benchmark/        # legacy symposium-pilot package (kept for reproducibility)
 ```
