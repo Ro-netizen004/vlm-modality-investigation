@@ -38,9 +38,11 @@ nvidia-smi
 
 cd "$REPO_DIR"
 
-# Start with the two anchors (vulnerable + resilient). Add more models as needed.
+# 4 working models spanning the spectrum (InternVL2 excluded — generation broken
+# in this env; use Qwen2.5-VL-7B as the resilient anchor instead).
 srun python scripts/run_legibility.py \
-    --models Idefics3-8B-Llama3 InternVL2-8B \
+    --models Qwen2-VL-2B-Instruct llava-v1.6-mistral-7b-hf \
+             Idefics3-8B-Llama3 Qwen2.5-VL-7B-Instruct \
     --num-problems 200 \
     --noise-image-dir "$NOISE_IMAGES" \
     --output-dir "$OUTPUT_DIR"

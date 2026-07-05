@@ -1,0 +1,19 @@
+{
+  "level": 8,
+  "name": "screenshot",
+  "description": "Browser screenshot simulation",
+  "accuracy": 0.87,
+  "error_distribution": {
+    "correct": 174,
+    "arithmetic_error": 26
+  },
+  "ci_95": [
+    0.8153476694765874,
+    0.9132916472314248
+  ],
+  "boot_ci_95": [
+    0.82,
+    0.915
+  ],
+  "n": 200
+}

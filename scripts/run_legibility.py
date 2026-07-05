@@ -45,7 +45,7 @@ MODEL_REGISTRY = {
     "InternVL2-8B":                  {"name": "OpenGVLab/InternVL2-8B",             "type": "internvl"},
     "llava-onevision-qwen2-7b-ov-hf":{"name": "llava-hf/llava-onevision-qwen2-7b-ov-hf", "type": "llava_onevision"},
 }
-DEFAULT_MODELS = ["Idefics3-8B-Llama3", "InternVL2-8B"]  # vulnerable + resilient anchors
+DEFAULT_MODELS = ["Idefics3-8B-Llama3", "Qwen2.5-VL-7B-Instruct"]  # vulnerable + resilient anchors
 
 
 def mismatch_prompt(text_question):
