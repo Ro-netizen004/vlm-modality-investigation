@@ -90,12 +90,59 @@ def _summarize(follows, n):
     n_txt = counts.get("text", 0)
     decidable = n_img + n_txt
     return {
+        "n_problems": n,
         "counts": dict(counts),
         "decidable": decidable,
         "text_preference": (n_txt / decidable) if decidable else None,
         "image_preference": (n_img / decidable) if decidable else None,
         "neither_rate": counts.get("neither", 0) / n if n else None,
     }
+
+
+def _effective_n_from_level(data: dict) -> int | None:
+    """Return the problem count stored in a level JSON (or infer from label counts)."""
+    stored = data.get("n_problems")
+    if isinstance(stored, int) and stored > 0:
+        return stored
+    counts = data.get("counts")
+    if counts:
+        return sum(counts.values())
+    return None
+
+
+def _level_paths(level, name, out_dir):
+    base = f"level_{level}_{name}"
+    return (
+        os.path.join(out_dir, f"{base}.json"),
+        os.path.join(out_dir, f"{base}.partial.jsonl"),
+    )
+
+
+def _remove_level_artifacts(level, name, out_dir):
+    for path in _level_paths(level, name, out_dir):
+        try:
+            os.remove(path)
+        except OSError:
+            pass
+
+
+def _clear_stale_partial(partial_path, n):
+    """Drop a checkpoint file if it was written for a different --num-problems."""
+    if not os.path.exists(partial_path):
+        return
+    max_i = -1
+    with open(partial_path) as f:
+        for line in f:
+            try:
+                max_i = max(max_i, int(json.loads(line)["i"]))
+            except (json.JSONDecodeError, KeyError, TypeError, ValueError):
+                continue
+    if max_i < 0:
+        return
+    old_n = max_i + 1
+    if old_n != n:
+        os.remove(partial_path)
+        print(f"  removed stale partial (~n={old_n}, want {n})")
 
 
 def run_level(vlm, level, questions, references, image_dir, n, out_dir):
@@ -108,12 +155,17 @@ def run_level(vlm, level, questions, references, image_dir, n, out_dir):
     """
     config = NOISE_LEVELS[level]
     name = config["name"]
-    final_path = os.path.join(out_dir, f"level_{level}_{name}.json")
+    final_path, partial_path = _level_paths(level, name, out_dir)
     if os.path.exists(final_path):
         with open(final_path) as f:
-            return json.load(f)
+            existing = json.load(f)
+        old_n = _effective_n_from_level(existing)
+        if old_n == n:
+            return existing
+        print(f"  L{level} {name}: stale results (n={old_n}, want {n}) — rerunning")
+        _remove_level_artifacts(level, name, out_dir)
 
-    partial_path = os.path.join(out_dir, f"level_{level}_{name}.partial.jsonl")
+    _clear_stale_partial(partial_path, n)
     done = {}
     if os.path.exists(partial_path):
         with open(partial_path) as f:
@@ -146,7 +198,7 @@ def run_level(vlm, level, questions, references, image_dir, n, out_dir):
             pf.write(json.dumps({"i": i, "follows": label}) + "\n")
             pf.flush()
 
-    res = {"level": level, "name": name, **_summarize(follows, n)}
+    res = {"level": level, "name": name, **_summarize(follows, n)}  # includes n_problems
     _atomic_write_json(final_path, res)
     try:
         os.remove(partial_path)  # checkpoint no longer needed once level is final
@@ -227,7 +279,9 @@ def main():
     parser.add_argument("--models", nargs="+", default=DEFAULT_MODELS)
     parser.add_argument("--benchmark", default="gsm8k", choices=TEXT_MATH_BENCHMARKS,
                         help="Which Protocol-A (rendered-text) benchmark to run.")
-    parser.add_argument("--num-problems", type=int, default=50)
+    parser.add_argument("--num-problems", type=int, default=300,
+                        help="Problems per benchmark (default 300: full SVAMP; solid GSM8K subset). "
+                             "Changing this auto-invalidates level_*.json from a different N.")
     parser.add_argument("--noise-levels", nargs="+", type=int, default=list(range(10)))
     parser.add_argument("--noise-image-dir", default=None,
                         help="Where the noisy images live (reused if present). "

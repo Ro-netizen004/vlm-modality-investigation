@@ -38,13 +38,11 @@ nvidia-smi
 
 cd "$REPO_DIR"
 
-# LEAN config: the mismatch condition is ~3h/level/model, so the full
-# 4-model x 200-problem grid is impractical (~120 GPU-h). We run the two anchors
-# (vulnerable + resilient) on a 50-problem subset — enough to establish whether
-# text preference tracks legibility. Qwen2-VL-2B already has L0-L3 (flat ~0.99).
+# Paper-scale anchors (vulnerable + resilient). Default N=300 in run_legibility.py;
+# stale level_*.json from an old N are auto-cleared on rerun.
 srun python scripts/run_legibility.py \
     --models Qwen2.5-VL-7B-Instruct Idefics3-8B-Llama3 \
-    --num-problems 50 \
+    --num-problems 300 \
     --noise-image-dir "$NOISE_IMAGES" \
     --output-dir "$OUTPUT_DIR"
 

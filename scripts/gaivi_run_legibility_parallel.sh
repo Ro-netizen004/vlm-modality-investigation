@@ -4,9 +4,8 @@
 # concurrently on the 8x L40S in GPU53, instead of one serial job on a single
 # GPU (which hit the 12h wall-time after ~4 levels of a single model).
 #
-# Grid: 2 benchmarks x 2 anchor models x 4 legibility levels = 16 jobs.
-# On 8 L40S that's ~2 waves -> wall clock ~= 2x the slowest cell (~6h worst case,
-# less in practice since Qwen cells are fast).
+# Grid: 2 benchmarks x 8 models x 4 legibility levels = 64 compute jobs.
+# On 8 L40S that's ~8 waves; wall clock ~= 8x the slowest cell (Idefics3).
 #
 # For each benchmark:
 #   1. a short CPU "prep" job applies noise to the CANONICAL HF images ONCE
@@ -27,10 +26,9 @@ REPO_DIR="$HOME/vlm-modality-investigation"    # <-- your GAIVI checkout dir
 OUTPUT_DIR="$HOME/vlm_research_results/phase6_legibility"
 export HF_HOME="${HF_HOME:-/data/rg21/hf_cache}"
 
-# NUM_PROBLEMS=50 matches the existing lean run. Now that cells run in parallel
-# you can afford more decidable trials — bump to 100-150 for a firmer estimate,
-# but FIRST clear stale level_*.json (they're keyed by level, not N).
-NUM_PROBLEMS=50
+# Paper-scale default: full SVAMP (300); solid GSM8K subset. run_legibility.py
+# auto-invalidates stale level_*.json when --num-problems changes.
+NUM_PROBLEMS=300
 
 BENCHMARKS=("gsm8k" "svamp")   # numeric Protocol-A benchmarks
 MODELS=(                       # full 8-model set (headline run)
@@ -51,10 +49,10 @@ mkdir -p "$OUTPUT_DIR" "$REPO_DIR/logs" "$HF_HOME"
 # are medium; the Qwen and InternVL models are fast. Give each a safe wall-time.
 walltime_for() {
     case "$1" in
-        Idefics3-8B-Llama3)                                echo "05:00:00" ;;
+        Idefics3-8B-Llama3)                                echo "10:00:00" ;;
         MiniCPM-V-2_6|llava-onevision-qwen2-7b-ov-hf|\
-        llava-v1.6-mistral-7b-hf|Phi-3.5-vision-instruct)  echo "03:00:00" ;;
-        *)                                                 echo "02:00:00" ;;
+        llava-v1.6-mistral-7b-hf|Phi-3.5-vision-instruct)  echo "06:00:00" ;;
+        *)                                                 echo "04:00:00" ;;
     esac
 }
 
