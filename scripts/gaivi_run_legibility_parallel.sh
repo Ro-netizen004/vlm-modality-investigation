@@ -76,10 +76,7 @@ for BM in "${BENCHMARKS[@]}"; do
 conda activate vlm
 export HF_HOME="${HF_HOME}"
 cd ${REPO_DIR}
-srun python scripts/run_legibility.py --render-only \\
-    --benchmark ${BM} --num-problems ${NUM_PROBLEMS} \\
-    --noise-levels ${LEVELS_STR} \\
-    --output-dir "${OUTPUT_DIR}"
+srun python scripts/run_legibility.py --render-only --benchmark ${BM} --num-problems ${NUM_PROBLEMS} --noise-levels 0 2 4 5 --output-dir "${OUTPUT_DIR}"
 SCRIPT
 )
     PREP_JID=$(echo "$PREP_OUT" | awk '{print $NF}')
@@ -109,12 +106,7 @@ conda activate vlm
 export HF_HOME="${HF_HOME}"
 cd ${REPO_DIR}
 echo "=== ${BM} | ${MODEL} | level ${LEVEL} on \$(hostname) : \$(date) ==="
-srun python scripts/run_legibility.py \\
-    --benchmark ${BM} \\
-    --models ${MODEL} \\
-    --noise-levels ${LEVEL} \\
-    --num-problems ${NUM_PROBLEMS} \\
-    --output-dir "${OUTPUT_DIR}"
+srun python scripts/run_legibility.py --benchmark ${BM} --models ${MODEL} --noise-levels ${LEVEL} --num-problems ${NUM_PROBLEMS} --output-dir "${OUTPUT_DIR}"
 SCRIPT
 )
             JID=$(echo "$OUT" | awk '{print $NF}')
@@ -139,11 +131,7 @@ SCRIPT
 
 conda activate vlm
 cd ${REPO_DIR}
-srun python scripts/run_legibility.py --merge \\
-    --benchmark ${BM} \\
-    --models ${MERGE_MODELS} \\
-    --num-problems ${NUM_PROBLEMS} \\
-    --output-dir "${OUTPUT_DIR}"
+srun python scripts/run_legibility.py --merge --benchmark ${BM} --models ${MERGE_MODELS} --num-problems ${NUM_PROBLEMS} --output-dir "${OUTPUT_DIR}"
 SCRIPT
     echo "[${BM}] merge job submitted (depends on ${#JOBIDS[@]} cells)"
 done
