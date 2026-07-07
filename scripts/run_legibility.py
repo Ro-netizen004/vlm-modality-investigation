@@ -37,7 +37,6 @@ from collections import Counter
 from pathlib import Path
 
 import torch
-from datasets import load_dataset
 from PIL import Image
 from tqdm import tqdm
 
@@ -45,7 +44,14 @@ sys.path.insert(0, str(Path(__file__).resolve().parent.parent))
 
 from src.models import VLMModel
 from src.evaluation import score_mismatch_follows
-from src.noise import NOISE_LEVELS, render_noisy_images
+from src.noise import NOISE_LEVELS, render_noisy_images, apply_noise_to_images
+from src.benchmarks import load_benchmark
+
+# Legibility only makes sense on Protocol A (text rendered as an image). We also
+# restrict to NUMERIC-answer benchmarks, because score_mismatch_follows attributes
+# a trial to image/text by numeric match. AQuA-RAT is multiple-choice (letter
+# answers) so it's excluded — its conflict attribution would be unreliable.
+TEXT_MATH_BENCHMARKS = ["gsm8k", "svamp", "math"]
 
 # Same registry/types as the noise runner — must match configs/default.yaml.
 MODEL_REGISTRY = {
@@ -56,8 +62,10 @@ MODEL_REGISTRY = {
     "MiniCPM-V-2_6":                 {"name": "openbmb/MiniCPM-V-2_6",              "type": "minicpm"},
     "InternVL2-8B":                  {"name": "OpenGVLab/InternVL2-8B",             "type": "internvl"},
     "llava-onevision-qwen2-7b-ov-hf":{"name": "llava-hf/llava-onevision-qwen2-7b-ov-hf", "type": "llava_onevision"},
+    "Phi-3.5-vision-instruct":       {"name": "microsoft/Phi-3.5-vision-instruct",  "type": "phi"},
 }
 DEFAULT_MODELS = ["Idefics3-8B-Llama3", "Qwen2.5-VL-7B-Instruct"]  # vulnerable + resilient anchors
+ALL_MODELS = list(MODEL_REGISTRY.keys())  # full 8-model set for the headline run
 
 
 def mismatch_prompt(text_question):
@@ -217,51 +225,83 @@ def run_model(model_key, questions, references, image_dir, n, levels, out_root):
 def main():
     parser = argparse.ArgumentParser(description="Legibility experiment (mismatch x noise)")
     parser.add_argument("--models", nargs="+", default=DEFAULT_MODELS)
+    parser.add_argument("--benchmark", default="gsm8k", choices=TEXT_MATH_BENCHMARKS,
+                        help="Which Protocol-A (rendered-text) benchmark to run.")
     parser.add_argument("--num-problems", type=int, default=50)
     parser.add_argument("--noise-levels", nargs="+", type=int, default=list(range(10)))
-    parser.add_argument("--noise-image-dir", default="results/phase4/images",
-                        help="Where the Phase 4 noisy images live (reused if present)")
+    parser.add_argument("--noise-image-dir", default=None,
+                        help="Where the noisy images live (reused if present). "
+                             "Defaults to a per-benchmark dir under the output dir. "
+                             "Noise is applied on top of the canonical HF images so "
+                             "Level 0 matches the images used in the main experiments.")
     parser.add_argument("--output-dir", default="results/phase6_legibility")
     parser.add_argument("--merge", action="store_true",
                         help="Skip inference; just rebuild per-model + combined summaries "
                              "from existing level_*.json files.")
+    parser.add_argument("--render-only", action="store_true",
+                        help="Only render the noisy images for this benchmark, then exit. "
+                             "Run this once before fanning out compute jobs so they don't "
+                             "race to render the same files.")
     args = parser.parse_args()
 
     torch.manual_seed(42)
-    os.makedirs(args.output_dir, exist_ok=True)
+
+    # Namespace outputs by benchmark. gsm8k stays at the root for backward
+    # compatibility (existing results + launcher/plotter paths); other benchmarks
+    # get their own subdir so results never collide.
+    out_root = (args.output_dir if args.benchmark == "gsm8k"
+                else os.path.join(args.output_dir, args.benchmark))
+    os.makedirs(out_root, exist_ok=True)
 
     # ── Merge-only mode: collate the fanned-out per-level results ──
     if args.merge:
         all_summaries = {}
         for model_key in args.models:
-            out_dir = os.path.join(args.output_dir, model_key)
+            out_dir = os.path.join(out_root, model_key)
             if os.path.isdir(out_dir):
                 all_summaries[model_key] = rebuild_model_summary(
                     out_dir, model_key, args.num_problems)
             else:
                 print(f"  {model_key}: no results dir — skipping")
-        _atomic_write_json(os.path.join(args.output_dir, "legibility_all.json"), all_summaries)
-        print("\nMerge complete → legibility_all.json")
+        _atomic_write_json(os.path.join(out_root, "legibility_all.json"), all_summaries)
+        print(f"\nMerge complete → {out_root}/legibility_all.json")
         return
 
-    ds = load_dataset("openai/gsm8k", "main", split="test").select(range(args.num_problems))
-    questions = list(ds["question"])
-    references = list(ds["answer"])
+    # Load the CANONICAL HF renders (use_hf=True) so noise is applied on top of the
+    # exact images used in the main experiments — Level 0 is then pixel-identical to
+    # the Phase 1/3 mismatch baseline, per the CLAUDE.md "use canonical PNGs" rule.
+    items = load_benchmark(args.benchmark, args.num_problems, use_hf=True)
+    questions = [it.question for it in items]
+    references = [it.reference_answer for it in items]
+    images = [it.image for it in items]
     n = len(questions)
-    print(f"Loaded {n} GSM8K problems")
+    print(f"Loaded {n} {args.benchmark} problems (canonical HF images)")
+    if args.benchmark == "math":
+        print("  Note: MATH answers are often non-numeric (fractions/expressions); "
+              "expect a smaller decidable set than GSM8K/SVAMP.")
 
-    # Reuse Phase 4 noisy images if available; otherwise render them.
-    image_dir = args.noise_image_dir
+    image_dir = args.noise_image_dir or os.path.join(out_root, "noise_images")
     have_images = all(
         os.path.isdir(os.path.join(image_dir, f"level_{L}_{NOISE_LEVELS[L]['name']}"))
         for L in args.noise_levels
     )
     if not have_images:
-        print(f"Noisy images not found in {image_dir} — rendering them...")
         os.makedirs(image_dir, exist_ok=True)
-        render_noisy_images(questions, image_dir, noise_levels=args.noise_levels)
+        if all(img is not None for img in images):
+            print(f"Applying noise to canonical HF images → {image_dir} ...")
+            apply_noise_to_images(images, image_dir,
+                                  noise_levels=args.noise_levels, texts=questions)
+        else:
+            missing = sum(img is None for img in images)
+            print(f"WARNING: {missing} canonical images missing — falling back to "
+                  f"fresh text render (Level 0 may not match the main experiments).")
+            render_noisy_images(questions, image_dir, noise_levels=args.noise_levels)
     else:
         print(f"Reusing existing noisy images from {image_dir}")
+
+    if args.render_only:
+        print(f"Render-only: images ready in {image_dir}. Exiting.")
+        return
 
     all_summaries = {}
     for model_key in args.models:
@@ -270,10 +310,10 @@ def main():
             continue
         all_summaries[model_key] = run_model(
             model_key, questions, references, image_dir, n,
-            args.noise_levels, args.output_dir)
+            args.noise_levels, out_root)
 
-    _atomic_write_json(os.path.join(args.output_dir, "legibility_all.json"), all_summaries)
-    print("\nLegibility experiment complete.")
+    _atomic_write_json(os.path.join(out_root, "legibility_all.json"), all_summaries)
+    print(f"\nLegibility experiment complete ({args.benchmark}).")
 
 
 if __name__ == "__main__":

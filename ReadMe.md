@@ -24,14 +24,18 @@ preference under conflict rather than inferring it from accuracy differences.
 | **3 — Multi-benchmark** | SVAMP, MATH-500, AQuA-RAT (Protocol A) + MathVista, AI2D, ChartQA, ScienceQA (Protocol B) | 7/8 models complete |
 | **4 — Noise ablation** | Rendered-image robustness across 10 corruption levels | 4-model contrast (resilient vs vulnerable) |
 | **5 — Prompt sensitivity** | Can prompting shift modality preference? | In progress |
-| **6 — Legibility** | Modality preference under image degradation (mismatch × noise): does text preference track legibility, or is it a fixed bias? | In progress |
+| **6 — Legibility** | Modality preference under image degradation (mismatch × noise): does text preference track legibility, or is it a fixed bias? Noise applied to the **canonical HF renders** (Level 0 = the main-experiment image); 8 models × {GSM8K, SVAMP} | In progress |
+| **7 — Mechanistic (attention × legibility)** | Mean text→image attention vs. corruption level — a *ceiling-free* complement to Phase 6 (Qwen family; extends Hua et al.'s router heads onto the reliability axis) | In progress |
 
 **Target venue:** EACL 2027 (ARR, Aug 3 2026) — main track, with Findings as the
-realistic landing given a mature, fast-moving subfield. Positioned as a
-*systematic empirical study* of modality preference in reasoning, competing on
-breadth and rigor rather than a single novel mechanism. Closely related work
-(conflict: Hua et al., Nguyen et al., Deng et al., Pezeshkpour et al.;
-robustness: VLM-RobustBench, Common Corruptions) is cited and differentiated.
+realistic landing given a mature, fast-moving subfield. Positioned around
+**reliability-aware modality arbitration**: prior conflict work degrades the
+*text* (Deng et al.) or varies *difficulty* (Pezeshkpour et al.); we degrade the
+*image* under conflict and ask whether preference tracks legibility — the axis
+none of them isolate. Phase 7 adds the mechanistic account. Closely related work
+(conflict: Hua et al., Nguyen et al., Deng et al., Pezeshkpour et al.; image-
+degradation reliance: "Diagnosing Visual Ignorance"; robustness: VLM-RobustBench,
+Common Corruptions) is cited and differentiated.
 
 ---
 
@@ -66,7 +70,9 @@ results/
 ├── phase2_error_analysis_summary.json   # cross-model disagreement analysis
 ├── phase3/<model>/   # multi-benchmark results (Protocol A/B, 7 models)
 ├── phase4/<model>/   # noise ablation results (4-model contrast)
-└── phase6_legibility/<model>/           # modality preference vs image legibility
+├── phase6_legibility/[<benchmark>/]<model>/  # modality preference vs image legibility
+│                                             # (gsm8k at root; svamp/ in a subdir)
+└── phase7_attention/[<benchmark>/]<model>/   # text→image attention vs legibility (Qwen family)
 docs/                 # CANONICAL.md (architecture), dataset specs, onboarding
 vlm_benchmark/        # legacy symposium-pilot package (kept for reproducibility)
 ```

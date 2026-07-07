@@ -74,12 +74,43 @@ def _levels_and_prefs(model_summary):
     return levels, prefs
 
 
-def plot(results_dir, as_percent=False, out_path=None):
+def _load_attention(attention_dir):
+    """Load the Phase 7 attention summaries (attention_all.json or per-model)."""
+    if not attention_dir or not os.path.isdir(attention_dir):
+        return {}
+    combined = os.path.join(attention_dir, "attention_all.json")
+    if os.path.exists(combined):
+        with open(combined) as f:
+            data = json.load(f)
+        if data:
+            return data
+    out = {}
+    for name in sorted(os.listdir(attention_dir)):
+        path = os.path.join(attention_dir, name, "attention_summary.json")
+        if os.path.exists(path):
+            with open(path) as f:
+                out[name] = json.load(f)
+    return out
+
+
+def _levels_and_attn(model_summary):
+    """Return (sorted_levels, attn) from a Phase 7 summary; None -> nan."""
+    raw = model_summary.get("attention_by_level", {})
+    by_level = {int(k): v for k, v in raw.items()}
+    levels = sorted(by_level)
+    attn = [by_level[L] if by_level[L] is not None else np.nan for L in levels]
+    return levels, attn
+
+
+def plot(results_dir, as_percent=False, out_path=None, benchmark="gsm8k",
+         attention_dir=None):
     summaries = _load_summaries(results_dir)
     if not summaries:
         print(f"No legibility results found in {results_dir} "
               f"(expected legibility_all.json or <model>/legibility_summary.json)")
         return None
+
+    attn_summaries = _load_attention(attention_dir)
 
     scale = 100.0 if as_percent else 1.0
     ylabel = "Text preference (%)" if as_percent else "Text preference"
@@ -92,6 +123,7 @@ def plot(results_dir, as_percent=False, out_path=None):
     fig, ax = plt.subplots(figsize=(9, 5.5))
 
     spreads = {}
+    color_of = {}
     for idx, (model, summary) in enumerate(sorted(summaries.items())):
         levels, prefs = _levels_and_prefs(summary)
         if not levels:
@@ -99,12 +131,30 @@ def plot(results_dir, as_percent=False, out_path=None):
         xs = [x_index[L] for L in levels]
         ys = [p * scale for p in prefs]
         color = PALETTE[idx % len(PALETTE)]
+        color_of[model] = color
         ax.plot(xs, ys, marker="o", markersize=7, linewidth=2,
                 color=color, label=model)
 
         valid = [p for p in prefs if not np.isnan(p)]
         if valid:
             spreads[model] = max(valid) - min(valid)
+
+    # ── Phase 7 overlay: text->image attention on a secondary axis (dashed) ──
+    ax2 = None
+    if attn_summaries:
+        ax2 = ax.twinx()
+        for j, (model, summ) in enumerate(sorted(attn_summaries.items())):
+            levels, attn = _levels_and_attn(summ)
+            if not levels:
+                continue
+            xs = [x_index[L] for L in levels if L in x_index]
+            ys = [a for L, a in zip(levels, attn) if L in x_index]
+            color = color_of.get(model, PALETTE[(len(color_of) + j) % len(PALETTE)])
+            ax2.plot(xs, ys, marker="s", markersize=6, linewidth=1.8,
+                     linestyle="--", color=color, alpha=0.9)
+        ax2.set_ylabel("Text→image attention  (dashed)", fontsize=11, color="#555555")
+        ax2.tick_params(axis="y", labelcolor="#555555")
+        ax2.set_ylim(bottom=0)
 
     # X ticks: level number + human-readable corruption name.
     tick_labels = []
@@ -118,7 +168,8 @@ def plot(results_dir, as_percent=False, out_path=None):
     ax.set_ylabel(ylabel, fontsize=12)
     ax.set_ylim(0, 105 if as_percent else 1.05)
     ax.grid(axis="both", alpha=0.3)
-    ax.legend(fontsize=10, title="Model", loc="lower right")
+    legend_title = "Model (solid=pref, dashed=attn)" if attn_summaries else "Model"
+    ax.legend(fontsize=10, title=legend_title, loc="lower right")
 
     # Interpretation subtitle from the largest per-model spread.
     if spreads:
@@ -133,7 +184,7 @@ def plot(results_dir, as_percent=False, out_path=None):
     else:
         verdict = ""
 
-    ax.set_title("Modality preference under image degradation",
+    ax.set_title(f"Modality preference under image degradation — {benchmark.upper()}",
                  fontsize=13, fontweight="bold", pad=12)
 
     plt.tight_layout()
@@ -162,11 +213,26 @@ def plot(results_dir, as_percent=False, out_path=None):
 def main():
     parser = argparse.ArgumentParser(description="Plot text preference vs. image legibility")
     parser.add_argument("--results-dir", default="results/phase6_legibility")
+    parser.add_argument("--benchmark", default="gsm8k",
+                        help="Which benchmark's results to plot. gsm8k reads --results-dir "
+                             "directly; others read <results-dir>/<benchmark>/.")
     parser.add_argument("--as-percent", action="store_true",
                         help="Plot preference as a percentage instead of a 0-1 fraction.")
+    parser.add_argument("--attention-results-dir", default=None,
+                        help="Optional Phase 7 attention results dir (results/phase7_attention). "
+                             "If given, overlays text→image attention (dashed, right axis).")
     parser.add_argument("--out", default=None, help="Output PNG path (optional).")
     args = parser.parse_args()
-    plot(args.results_dir, as_percent=args.as_percent, out_path=args.out)
+
+    # Match run_legibility's namespacing: gsm8k at the root, others in a subdir.
+    results_dir = (args.results_dir if args.benchmark == "gsm8k"
+                   else os.path.join(args.results_dir, args.benchmark))
+    attention_dir = None
+    if args.attention_results_dir:
+        attention_dir = (args.attention_results_dir if args.benchmark == "gsm8k"
+                         else os.path.join(args.attention_results_dir, args.benchmark))
+    plot(results_dir, as_percent=args.as_percent, out_path=args.out,
+         benchmark=args.benchmark, attention_dir=attention_dir)
 
 
 if __name__ == "__main__":

@@ -437,3 +437,50 @@ def render_noisy_images(questions: list, base_image_dir: str,
             clean = render_text_to_image(questions[i])
             noisy = apply_noise_level(clean, level, text=questions[i], seed=seed + i)
             noisy.save(out_path)
+
+
+def apply_noise_to_images(images: list, base_image_dir: str,
+                          noise_levels: list = None, texts: list = None,
+                          seed: int = 42):
+    """
+    Apply noise levels to PRE-RENDERED images (e.g. the canonical HuggingFace
+    renders) instead of re-rendering the text from scratch.
+
+    This is the correct source for the legibility experiment: Level 0 is a no-op,
+    so the clean image is *pixel-identical* to the canonical image used in the
+    main mismatch experiments — the degradation curve then starts from exactly
+    the same baseline rather than a freshly re-rendered (possibly drifted) image.
+
+    Directory structure matches render_noisy_images():
+        base_image_dir/level_<L>_<name>/q000.png, ...
+
+    `texts` is optional and only needed for re-render levels (7=handwriting);
+    the monotonic legibility ladder (0/2/4/5) never needs it.
+    """
+    import os
+    from tqdm import tqdm
+
+    if noise_levels is None:
+        noise_levels = list(NOISE_LEVELS.keys())
+
+    for level in noise_levels:
+        config = NOISE_LEVELS[level]
+        level_dir = os.path.join(base_image_dir, f"level_{level}_{config['name']}")
+        os.makedirs(level_dir, exist_ok=True)
+
+        existing = sum(1 for f in os.listdir(level_dir) if f.endswith(".png"))
+        if existing >= len(images):
+            print(f"  Level {level} ({config['name']}): {existing} images exist, skipping")
+            continue
+
+        print(f"  Level {level} ({config['name']}): {config['description']}")
+        for i in tqdm(range(len(images)), desc=f"Level {level}"):
+            out_path = os.path.join(level_dir, f"q{i:03d}.png")
+            if os.path.exists(out_path):
+                continue
+            base = images[i]
+            if base.mode != "RGB":
+                base = base.convert("RGB")
+            text_i = texts[i] if texts else None
+            noisy = apply_noise_level(base, level, text=text_i, seed=seed + i)
+            noisy.save(out_path)

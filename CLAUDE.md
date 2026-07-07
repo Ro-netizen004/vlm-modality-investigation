@@ -66,8 +66,13 @@ Aligned `text_and_image` exists only in `vlm_benchmark/experiments/runner.py` �
 | `Multi_Benchmark_Eval.ipynb` | Phase 3 benchmarks |
 | `Noise_Ablation.ipynb` | Phase 4 |
 | `Prompt_Sensitivity.ipynb` | Phase 5 |
-| `Mechanistic_Analysis.ipynb` | Phase 6 (appendix) |
+| `Mechanistic_Analysis.ipynb` | Attention/hidden-state probes (feeds Phase 7) |
 | `notebooks/deprecated/*.ipynb` | **Deprecated** — do not extend |
+
+**Phase map (canonical numbering — keep consistent with `ReadMe.md`):**
+1 GSM8K · 2 Error analysis · 3 Multi-benchmark · 4 Noise ablation ·
+5 Prompt sensitivity · 6 Legibility (`scripts/run_legibility.py`) ·
+7 Mechanistic attention × legibility (`scripts/run_attention_legibility.py`, Qwen family).
 
 ## Reproducibility checklist (new runs)
 

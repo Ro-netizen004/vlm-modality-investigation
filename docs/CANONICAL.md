@@ -22,6 +22,23 @@ openai/gsm8k (test)
 - Local/CLI: `python scripts/run_benchmark.py --config configs/default.yaml`
 - Multi-benchmark: `python scripts/run_multi_benchmark.py`
 
+**Legibility + mechanistic pipeline (Phases 6–7):**
+
+```
+canonical HF renders (Protocol A: gsm8k/svamp/math)
+    → src/noise.apply_noise_to_images   (noise ON TOP of canonical; Level 0 == baseline)
+    → Phase 6  scripts/run_legibility.py           → text-preference vs level
+    → Phase 7  scripts/run_attention_legibility.py → text→image attention vs level (Qwen only)
+    → scripts/plot_legibility.py [--attention-results-dir ...]
+```
+
+- Fan-out on GAIVI: `scripts/gaivi_run_legibility_parallel.sh` (one SLURM job per
+  benchmark × model × level; prep job renders noisy images once to avoid races).
+- **Do not** re-render text for legibility — apply noise to the canonical HF image
+  (`apply_noise_to_images`), not `render_noisy_images`, so Level 0 matches Phase 1/3.
+- Phase 7 attention needs `attn_implementation="eager"`; reliable only on the Qwen
+  family so far. Run `run_attention_legibility.py --smoke` before any full grid.
+
 ---
 
 ## Legacy pipeline (still in repo, not used for Phase 1)
