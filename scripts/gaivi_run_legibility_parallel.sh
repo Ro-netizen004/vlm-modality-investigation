@@ -23,7 +23,7 @@
 
 PARTITION="CISL"
 NODE="GPU53"                                   # 8x L40S
-REPO_DIR="$HOME/vlm-modality-research"         # <-- match your checkout dir
+REPO_DIR="$HOME/vlm-modality-investigation"    # <-- your GAIVI checkout dir
 OUTPUT_DIR="$HOME/vlm_research_results/phase6_legibility"
 export HF_HOME="${HF_HOME:-/data/rg21/hf_cache}"
 
