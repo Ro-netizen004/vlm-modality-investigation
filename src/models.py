@@ -165,6 +165,20 @@ class VLMModel:
         """Phi-3.5-Vision-Instruct from Microsoft."""
         from transformers import AutoProcessor, AutoModelForCausalLM
 
+        # transformers >=4.48 removed DynamicCache.get_max_length (renamed to
+        # get_max_cache_shape), but Phi-3.5's bundled modeling code still calls it
+        # during generation. Restore it so generate() works. DynamicCache is
+        # unbounded, so its "max length" is None.
+        try:
+            from transformers.cache_utils import DynamicCache
+            if not hasattr(DynamicCache, "get_max_length"):
+                if hasattr(DynamicCache, "get_max_cache_shape"):
+                    DynamicCache.get_max_length = DynamicCache.get_max_cache_shape
+                else:
+                    DynamicCache.get_max_length = lambda self: None
+        except Exception:
+            pass
+
         self.processor = AutoProcessor.from_pretrained(
             self.model_name, trust_remote_code=True)
         quant_config = get_quant_config(self.quantize, self.dtype)
