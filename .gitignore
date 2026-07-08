@@ -34,6 +34,7 @@ Thumbs.db
 # Generated experiment outputs
 vlm_benchmark_outputs/
 rendered_images/
+presentations/
 
 # HF v2 upload staging (large; publish to Hub, do not commit)
 hf_gsm8k_v2_upload/
@@ -49,3 +50,7 @@ data/render_progress.json
 
 # Paper drafts — keep local until deliberate arXiv/submission
 paper/
+
+# Raw prediction CSVs — backed up on Google Drive (see results/README.md)
+results/phase6_legibility/**/level_*.csv
+vlm_results_csvs.zip
