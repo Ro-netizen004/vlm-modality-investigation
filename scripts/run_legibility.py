@@ -42,8 +42,10 @@ from tqdm import tqdm
 
 sys.path.insert(0, str(Path(__file__).resolve().parent.parent))
 
+import csv
+
 from src.models import VLMModel
-from src.evaluation import score_mismatch_follows
+from src.evaluation import score_mismatch_follows, score_by_reasoning
 from src.noise import NOISE_LEVELS, render_noisy_images, apply_noise_to_images
 from src.benchmarks import load_benchmark
 
@@ -172,20 +174,21 @@ def run_level(vlm, level, questions, references, image_dir, n, out_dir):
             for line in f:
                 try:
                     rec = json.loads(line)
-                    done[int(rec["i"])] = rec["follows"]
+                    done[int(rec["i"])] = (rec["follows"], rec.get("pred", ""))
                 except (json.JSONDecodeError, KeyError):
                     continue  # tolerate a torn last line from a hard kill
         print(f"  L{level} {name}: resuming, {len(done)}/{n} already done")
 
     level_img_dir = os.path.join(image_dir, f"level_{level}_{name}")
     follows = [None] * n
+    preds = [""] * n
 
     with open(partial_path, "a") as pf:
         for i in tqdm(range(n), desc=f"L{level}"):
-            if i in done:
-                follows[i] = done[i]
-                continue
             txt_idx = (i + 1) % n
+            if i in done:
+                follows[i], preds[i] = done[i]
+                continue
             img_path = os.path.join(level_img_dir, f"q{i:03d}.png")
             try:
                 img = Image.open(img_path).convert("RGB")
@@ -195,8 +198,15 @@ def run_level(vlm, level, questions, references, image_dir, n, out_dir):
                 pred = f"ERROR: {e}"
             label = score_mismatch_follows(pred, references[i], references[txt_idx])
             follows[i] = label
-            pf.write(json.dumps({"i": i, "follows": label}) + "\n")
+            preds[i] = pred
+            # Save the prediction in the checkpoint so the CSV (and rescore) survive a resume.
+            pf.write(json.dumps({"i": i, "follows": label, "pred": pred}) + "\n")
             pf.flush()
+
+    # Save per-problem predictions (Phase-1 style) so the reasoning rescore can run
+    # post-hoc without re-running the model.
+    _write_level_csv(os.path.join(out_dir, f"level_{level}_{name}.csv"),
+                     n, questions, references, preds, follows)
 
     res = {"level": level, "name": name, **_summarize(follows, n)}  # includes n_problems
     _atomic_write_json(final_path, res)
@@ -205,6 +215,20 @@ def run_level(vlm, level, questions, references, image_dir, n, out_dir):
     except OSError:
         pass
     return res
+
+
+def _write_level_csv(csv_path, n, questions, references, preds, follows):
+    """One row per mismatch trial: image/text problems, the prediction, raw label."""
+    tmp = f"{csv_path}.tmp.{os.getpid()}"
+    with open(tmp, "w", newline="", encoding="utf-8") as f:
+        w = csv.writer(f)
+        w.writerow(["problem_id", "image_question", "text_question",
+                    "image_reference", "text_reference", "prediction", "follows"])
+        for i in range(n):
+            txt_idx = (i + 1) % n
+            w.writerow([i, questions[i], questions[txt_idx],
+                        references[i], references[txt_idx], preds[i], follows[i]])
+    os.replace(tmp, csv_path)
 
 
 def rebuild_model_summary(out_dir, model_key, n):
@@ -239,6 +263,71 @@ def rebuild_model_summary(out_dir, model_key, n):
     if tps:
         print(f"  [{model_key}] text preference across {len(ordered)} levels: "
               f"{min(tps):.3f}--{max(tps):.3f} (spread {max(tps) - min(tps):.3f})")
+    return summary
+
+
+def rescore_level_from_csv(csv_path):
+    """Read a level's prediction CSV and reclassify 'neither' trials by reasoning
+    trace. Returns raw and rescored counts + text preferences (Phase-1 style)."""
+    raw, resc = Counter(), Counter()
+    n = 0
+    with open(csv_path, newline="", encoding="utf-8") as f:
+        for row in csv.DictReader(f):
+            n += 1
+            fol = row["follows"]
+            raw[fol] += 1
+            if fol == "neither":
+                resc[score_by_reasoning(row["prediction"],
+                                        row["image_question"],
+                                        row["text_question"])] += 1
+            else:
+                resc[fol] += 1
+
+    raw_img, raw_txt = raw.get("image", 0), raw.get("text", 0)
+    raw_dec = raw_img + raw_txt
+    r_img = resc.get("image", 0) + resc.get("image_reasoning", 0)
+    r_txt = resc.get("text", 0) + resc.get("text_reasoning", 0)
+    r_dec = r_img + r_txt
+    return {
+        "n_problems": n,
+        "counts_raw": dict(raw),
+        "decidable_raw": raw_dec,
+        "text_preference_raw": (raw_txt / raw_dec) if raw_dec else None,
+        "counts_rescored": dict(resc),
+        "decidable": r_dec,
+        "text_preference": (r_txt / r_dec) if r_dec else None,
+        "neither_rate": (resc.get("neither", 0) / n) if n else None,
+    }
+
+
+def rescore_model(out_dir, model_key):
+    """Rescore every level CSV for a model; write a rescored per-model summary."""
+    levels = {}
+    for fn in sorted(os.listdir(out_dir)):
+        m = re.match(r"level_(\d+)_(.+)\.csv$", fn)
+        if not m:
+            continue
+        L, name = int(m.group(1)), m.group(2)
+        res = rescore_level_from_csv(os.path.join(out_dir, fn))
+        res["level"], res["name"] = L, name
+        levels[L] = res
+        _atomic_write_json(os.path.join(out_dir, f"level_{L}_{name}_rescored.json"), res)
+
+    ordered = sorted(levels)
+    summary = {
+        "model": model_key,
+        "text_preference_by_level": {L: levels[L]["text_preference"] for L in ordered},
+        "text_preference_raw_by_level": {L: levels[L]["text_preference_raw"] for L in ordered},
+        "decidable_by_level": {L: levels[L]["decidable"] for L in ordered},
+        "decidable_raw_by_level": {L: levels[L]["decidable_raw"] for L in ordered},
+    }
+    _atomic_write_json(os.path.join(out_dir, "legibility_summary_rescored.json"), summary)
+    if ordered:
+        tps = [levels[L]["text_preference"] for L in ordered if levels[L]["text_preference"] is not None]
+        if tps:
+            print(f"  [{model_key}] rescored text pref {min(tps):.3f}--{max(tps):.3f}; "
+                  f"decidable {min(levels[L]['decidable'] for L in ordered)}--"
+                  f"{max(levels[L]['decidable'] for L in ordered)}")
     return summary
 
 
@@ -292,6 +381,10 @@ def main():
     parser.add_argument("--merge", action="store_true",
                         help="Skip inference; just rebuild per-model + combined summaries "
                              "from existing level_*.json files.")
+    parser.add_argument("--rescore", action="store_true",
+                        help="Skip inference; read the per-level prediction CSVs and "
+                             "reclassify 'neither' trials by reasoning trace, writing "
+                             "rescored summaries (larger decidable, Phase-1 comparable).")
     parser.add_argument("--render-only", action="store_true",
                         help="Only render the noisy images for this benchmark, then exit. "
                              "Run this once before fanning out compute jobs so they don't "
@@ -319,6 +412,19 @@ def main():
                 print(f"  {model_key}: no results dir — skipping")
         _atomic_write_json(os.path.join(out_root, "legibility_all.json"), all_summaries)
         print(f"\nMerge complete → {out_root}/legibility_all.json")
+        return
+
+    # ── Rescore-only mode: reclassify 'neither' via reasoning trace from the CSVs ──
+    if args.rescore:
+        all_summaries = {}
+        for model_key in args.models:
+            out_dir = os.path.join(out_root, model_key)
+            if os.path.isdir(out_dir):
+                all_summaries[model_key] = rescore_model(out_dir, model_key)
+            else:
+                print(f"  {model_key}: no results dir — skipping")
+        _atomic_write_json(os.path.join(out_root, "legibility_all_rescored.json"), all_summaries)
+        print(f"\nRescore complete → {out_root}/legibility_all_rescored.json")
         return
 
     # Load the CANONICAL HF renders (use_hf=True) so noise is applied on top of the

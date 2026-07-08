@@ -53,6 +53,66 @@ def numeric_distance(pred: str, ref: str) -> float:
     return abs(p - r)
 
 
+_REASONING_STOP = {
+    "a", "an", "the", "is", "are", "was", "were", "be", "been",
+    "have", "has", "had", "do", "does", "did", "will", "would",
+    "could", "should", "may", "might", "shall", "can", "need",
+    "to", "of", "in", "on", "at", "by", "for", "with", "about",
+    "into", "from", "up", "out", "as", "if", "or", "and", "but",
+    "not", "no", "so", "it", "its", "he", "she", "they", "we",
+    "you", "i", "his", "her", "their", "our", "how", "what",
+    "many", "much", "more", "each", "every", "per", "total",
+    "find", "make", "take", "get", "give",
+    "long", "old", "new", "all", "any", "some", "than",
+}
+
+
+def extract_keywords(question: str) -> set:
+    """Distinctive lowercase keywords (stop-words and short tokens removed)."""
+    tokens = re.findall(r"[a-zA-Z]+", str(question).lower())
+    return {t for t in tokens if len(t) > 3 and t not in _REASONING_STOP}
+
+
+def extract_numbers(text: str) -> set:
+    """All numbers in the text, as strings."""
+    return set(re.findall(r"\b\d+(?:\.\d+)?\b", str(text)))
+
+
+def score_by_reasoning(prediction: str, image_question: str, text_question: str) -> str:
+    """
+    For a mismatch trial that scored 'neither' by answer, infer which problem the
+    model was actually working from its reasoning trace.
+
+    Unique keywords/numbers of each problem are matched against the prediction;
+    keyword hits are weighted 2x over number hits (numbers can coincide).
+    Returns 'text_reasoning', 'image_reasoning', or 'neither'.
+    """
+    pred_lower = str(prediction).lower()
+    pred_numbers = extract_numbers(prediction)
+
+    img_kw = extract_keywords(image_question)
+    txt_kw = extract_keywords(text_question)
+    img_unique = img_kw - txt_kw
+    txt_unique = txt_kw - img_kw
+
+    img_kw_hits = sum(1 for kw in img_unique if kw in pred_lower)
+    txt_kw_hits = sum(1 for kw in txt_unique if kw in pred_lower)
+
+    img_nums = extract_numbers(image_question)
+    txt_nums = extract_numbers(text_question)
+    img_num_hits = len(pred_numbers & (img_nums - txt_nums))
+    txt_num_hits = len(pred_numbers & (txt_nums - img_nums))
+
+    img_score = img_kw_hits * 2 + img_num_hits
+    txt_score = txt_kw_hits * 2 + txt_num_hits
+
+    if txt_score > img_score and txt_score > 0:
+        return "text_reasoning"
+    if img_score > txt_score and img_score > 0:
+        return "image_reasoning"
+    return "neither"
+
+
 def score_mismatch_follows(prediction: str, image_ref: str, text_ref: str) -> str:
     """
     Correctness-based mismatch classification (GSM8K numeric answers).
