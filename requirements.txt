@@ -1,5 +1,5 @@
 torch>=2.0.0
-transformers>=4.45.0
+transformers==4.49.0  # pinned: >=4.50 drops GenerationMixin (breaks InternVL2/MiniCPM); Qwen2.5-VL needs >=4.49
 accelerate
 datasets
 evaluate

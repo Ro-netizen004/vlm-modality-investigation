@@ -28,20 +28,16 @@ export HF_HOME="${HF_HOME:-/data/rg21/hf_cache}"
 
 # Paper-scale default: full SVAMP (300); solid GSM8K subset. run_legibility.py
 # auto-invalidates stale level_*.json when --num-problems changes.
-NUM_PROBLEMS=300
+NUM_PROBLEMS="${NUM_PROBLEMS:-300}"
 
-BENCHMARKS=("gsm8k" "svamp")   # numeric Protocol-A benchmarks
-MODELS=(                       # full 8-model set (headline run)
-    "Qwen2-VL-2B-Instruct"
-    "llava-v1.6-mistral-7b-hf"
-    "Qwen2.5-VL-7B-Instruct"
-    "Idefics3-8B-Llama3"
-    "MiniCPM-V-2_6"
-    "InternVL2-8B"
-    "llava-onevision-qwen2-7b-ov-hf"
-    "Phi-3.5-vision-instruct"
-)
-LEVELS=(0 2 4 5)   # monotonic legibility ladder: clean -> light blur -> blur+noise -> heavy
+# Grid is overridable via env vars for targeted runs (defaults = full headline grid).
+# Example — headroom models on SVAMP only:
+#   BENCHMARKS_OVERRIDE="svamp" \
+#   MODELS_OVERRIDE="InternVL2-8B Phi-3.5-vision-instruct" \
+#     bash scripts/gaivi_run_legibility_parallel.sh
+IFS=' ' read -ra BENCHMARKS <<< "${BENCHMARKS_OVERRIDE:-gsm8k svamp}"   # numeric Protocol-A benchmarks
+IFS=' ' read -ra MODELS <<< "${MODELS_OVERRIDE:-Qwen2-VL-2B-Instruct llava-v1.6-mistral-7b-hf Qwen2.5-VL-7B-Instruct Idefics3-8B-Llama3 MiniCPM-V-2_6 InternVL2-8B llava-onevision-qwen2-7b-ov-hf Phi-3.5-vision-instruct}"
+IFS=' ' read -ra LEVELS <<< "${LEVELS_OVERRIDE:-0 2 4 5}"   # monotonic legibility ladder: clean -> light blur -> blur+noise -> heavy
 
 mkdir -p "$OUTPUT_DIR" "$REPO_DIR/logs" "$HF_HOME"
 
