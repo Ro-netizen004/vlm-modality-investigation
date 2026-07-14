@@ -51,6 +51,4 @@ data/render_progress.json
 # Paper drafts — keep local until deliberate arXiv/submission
 paper/
 
-# Raw prediction CSVs — backed up on Google Drive (see results/README.md)
-results/phase6_legibility/**/level_*.csv
-vlm_results_csvs.zip
+

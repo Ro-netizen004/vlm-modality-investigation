@@ -1,0 +1,15 @@
+{
+  "level": 5,
+  "name": "heavy_degradation",
+  "n_problems": 1319,
+  "counts": {
+    "text": 632,
+    "neither": 659,
+    "ambiguous": 15,
+    "image": 13
+  },
+  "decidable": 645,
+  "text_preference": 0.9798449612403101,
+  "image_preference": 0.020155038759689922,
+  "neither_rate": 0.49962092494313876
+}
