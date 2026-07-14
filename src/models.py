@@ -716,7 +716,7 @@ class VLMModel:
         n_cand = len(ids_full) - len(ids_ctx)
         if n_cand <= 0:
             return None
-        inputs = self.processor(text=[ctx_text + candidate], images=[image],
+        inputs = self.processor(text=ctx_text + candidate, images=[image],
                                 return_tensors="pt")
         inputs = {k: v.to(self.model.device) for k, v in inputs.items()}
         with torch.no_grad():
