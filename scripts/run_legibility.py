@@ -413,7 +413,8 @@ def run_cll_level(vlm, level, questions, references, image_dir, n, out_dir):
             try:
                 img = Image.open(os.path.join(level_img_dir, f"q{i:03d}.png")).convert("RGB")
                 m = vlm.arbitration_margin(
-                    img, text_answer=references[txt_idx], image_answer=references[i])
+                    img, text_answer=references[txt_idx], image_answer=references[i],
+                    text_question=questions[txt_idx])
             except Exception as e:
                 m = None
             rec = {"i": i, "level": level, "margin": m}

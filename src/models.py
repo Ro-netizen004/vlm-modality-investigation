@@ -53,11 +53,14 @@ IMAGE_PROMPT = (
     "End with '#### <answer>'."
 )
 
-# Direct-answer scaffold for conditional log-likelihood scoring (no chain-of-thought,
-# so the scored answer reflects the model's pre-reasoning modality preference).
-DIRECT_IMAGE_PROMPT = (
-    "The image contains a math word problem. "
-    "Give only the final numeric answer in the form '#### <answer>'."
+# Direct (no chain-of-thought) version of the MISMATCH prompt for conditional
+# log-likelihood scoring: the prompt asks the TEXT problem while the (conflicting)
+# image is attached — exactly the generation-time conflict, minus the reasoning.
+# CLL(text_answer) vs CLL(image_answer) then measures which modality pulls the answer.
+DIRECT_MISMATCH_PROMPT = (
+    "Solve the following math problem. "
+    "Give only the final numeric answer in the form '#### <answer>'.\n\n"
+    "Problem: {q}"
 )
 
 # Approx API prices ($/1M tokens) as (input, output) for usage-cost reporting.
@@ -726,16 +729,16 @@ class VLMModel:
             total += float(lp[int(ids[p])])
         return {"sum": total, "mean": total / n_cand, "n": n_cand}
 
-    def conditional_loglik(self, image, candidate, prompt_text=None):
-        """CLL of `candidate` (a numeric answer string) under a direct-answer scaffold,
-        conditioned on `image`. Open _generate-family models only."""
-        ctx = self._ctx_for_scoring(prompt_text or DIRECT_IMAGE_PROMPT)
+    def conditional_loglik(self, image, candidate, text_question):
+        """CLL of `candidate` under the direct MISMATCH scaffold (prompt asks the TEXT
+        problem, conflicting image attached). Open _generate-family models only."""
+        ctx = self._ctx_for_scoring(DIRECT_MISMATCH_PROMPT.format(q=text_question))
         return self._score_continuation(ctx, image, str(candidate))
 
-    def arbitration_margin(self, image, text_answer, image_answer, prompt_text=None):
-        """margin = CLL(text_answer) - CLL(image_answer), per-token normalized.
-        Positive = model favors the TEXT-consistent answer. Returns dict."""
-        ctx = self._ctx_for_scoring(prompt_text or DIRECT_IMAGE_PROMPT)
+    def arbitration_margin(self, image, text_answer, image_answer, text_question):
+        """margin = CLL(text_answer) - CLL(image_answer), per-token normalized, scored
+        under the mismatch scaffold. Positive = model favors the TEXT answer."""
+        ctx = self._ctx_for_scoring(DIRECT_MISMATCH_PROMPT.format(q=text_question))
         t = self._score_continuation(ctx, image, str(text_answer))
         im = self._score_continuation(ctx, image, str(image_answer))
         if t is None or im is None:

@@ -56,7 +56,8 @@ def main():
         img = imgs[i]
         if img is None:
             continue
-        m = vlm.arbitration_margin(img, text_answer=refs[txt_idx], image_answer=refs[i])
+        m = vlm.arbitration_margin(img, text_answer=refs[txt_idx], image_answer=refs[i],
+                                   text_question=items[txt_idx].question)
         gen = vlm.generate_with_image(img, text_prompt=MISMATCH_PROMPT.format(q=items[txt_idx].question))
         follows = score_mismatch_follows(gen, refs[i], refs[txt_idx])  # (pred, img_ref, txt_ref)
         if m is None:
