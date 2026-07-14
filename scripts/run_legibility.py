@@ -376,6 +376,76 @@ def run_model(model_key, questions, references, image_dir, n, levels, out_root):
     return rebuild_model_summary(out_dir, model_key, n)
 
 
+# Model types that support conditional-log-likelihood scoring (forward-pass access).
+CLL_TYPES = {"qwen", "llava", "llava_onevision", "phi", "idefics"}
+
+
+def run_cll_level(vlm, level, questions, references, image_dir, n, out_dir):
+    """Per mismatch trial, compute the arbitration margin CLL(text) - CLL(image) on the
+    level's degraded image, and JOIN the reasoning label from the generation CSV so the
+    downstream stratified analysis is ready. Writes/append level_X.cll.jsonl (resumable)."""
+    name = NOISE_LEVELS[level]["name"]
+    cll_path = os.path.join(out_dir, f"level_{level}_{name}.cll.jsonl")
+    level_img_dir = os.path.join(image_dir, f"level_{level}_{name}")
+
+    # Reasoning label + binary follows come from the generation CSV, if present.
+    gen = {}
+    csv_path = os.path.join(out_dir, f"level_{level}_{name}.csv")
+    if os.path.exists(csv_path):
+        with open(csv_path, newline="", encoding="utf-8") as f:
+            for row in csv.DictReader(f):
+                gen[int(row["problem_id"])] = row
+
+    done = set()
+    if os.path.exists(cll_path):
+        with open(cll_path) as f:
+            for line in f:
+                try:
+                    done.add(int(json.loads(line)["i"]))
+                except (json.JSONDecodeError, KeyError):
+                    continue
+
+    with open(cll_path, "a") as out:
+        for i in tqdm(range(n), desc=f"CLL L{level}"):
+            if i in done:
+                continue
+            txt_idx = (i + 1) % n  # image = problem i, text = problem txt_idx
+            try:
+                img = Image.open(os.path.join(level_img_dir, f"q{i:03d}.png")).convert("RGB")
+                m = vlm.arbitration_margin(
+                    img, text_answer=references[txt_idx], image_answer=references[i])
+            except Exception as e:
+                m = None
+            rec = {"i": i, "level": level, "margin": m}
+            row = gen.get(i)
+            if row is not None:
+                rec["follows"] = row.get("follows")
+                rec["reasoning"] = score_by_reasoning(
+                    row.get("prediction", ""), row.get("image_question", ""),
+                    row.get("text_question", ""))
+            out.write(json.dumps(rec) + "\n")
+            out.flush()
+    return cll_path
+
+
+def run_cll_model(model_key, questions, references, image_dir, n, levels, out_root):
+    """Score CLL arbitration margins across levels for one open model."""
+    mc = MODEL_REGISTRY[model_key]
+    if mc["type"] not in CLL_TYPES:
+        print(f"  {model_key}: type={mc['type']} has no forward-pass access — "
+              f"CLL scoring skipped (open _generate models only).")
+        return
+    out_dir = os.path.join(out_root, model_key)
+    os.makedirs(out_dir, exist_ok=True)
+    print(f"\n{'='*60}\n  CLL scoring: {model_key}  (levels {levels})\n{'='*60}")
+    vlm = VLMModel(model_name=mc["name"], model_type=mc["type"],
+                   max_new_tokens=256, torch_dtype="bfloat16")
+    vlm.load()
+    for level in levels:
+        run_cll_level(vlm, level, questions, references, image_dir, n, out_dir)
+    vlm.unload()
+
+
 def main():
     parser = argparse.ArgumentParser(description="Legibility experiment (mismatch x noise)")
     parser.add_argument("--models", nargs="+", default=DEFAULT_MODELS)
@@ -402,6 +472,13 @@ def main():
                         help="Only render the noisy images for this benchmark, then exit. "
                              "Run this once before fanning out compute jobs so they don't "
                              "race to render the same files.")
+    parser.add_argument("--score-cll", action="store_true",
+                        help="Conditional-log-likelihood mode: per trial compute the "
+                             "arbitration margin CLL(text)-CLL(image) on each level's "
+                             "degraded image, joined with the reasoning label from the "
+                             "generation CSV. Open _generate models only. Writes "
+                             "level_X.cll.jsonl. Needs the noisy images (and, for the join, "
+                             "the generation CSVs) present.")
     args = parser.parse_args()
 
     torch.manual_seed(42)
@@ -474,6 +551,17 @@ def main():
 
     if args.render_only:
         print(f"Render-only: images ready in {image_dir}. Exiting.")
+        return
+
+    # ── CLL-scoring mode: arbitration margins joined with reasoning labels ──
+    if args.score_cll:
+        for model_key in args.models:
+            if model_key in MODEL_REGISTRY:
+                run_cll_model(model_key, questions, references, image_dir, n,
+                              args.noise_levels, out_root)
+            else:
+                print(f"Unknown model '{model_key}' — skipping")
+        print(f"\nCLL scoring complete ({args.benchmark}).")
         return
 
     all_summaries = {}
