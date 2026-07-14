@@ -68,6 +68,9 @@ MODEL_REGISTRY = {
     # Frontier API model (no GPU; needs OPENAI_API_KEY). VERIFY the exact "name"
     # API id against `curl https://api.openai.com/v1/models` before a full run.
     "GPT-5.6-Luna":                  {"name": "gpt-5.6-luna",                       "type": "openai"},
+    # Frontier API model (no GPU; needs GEMINI_API_KEY). VERIFY the exact id via
+    # the Gemini models list before a full run.
+    "Gemini-2.5-Flash-Lite":         {"name": "gemini-2.5-flash-lite",              "type": "gemini"},
 }
 DEFAULT_MODELS = ["Idefics3-8B-Llama3", "Qwen2.5-VL-7B-Instruct"]  # vulnerable + resilient anchors
 ALL_MODELS = list(MODEL_REGISTRY.keys())  # full 8-model set for the headline run
@@ -161,6 +164,7 @@ def run_level(vlm, level, questions, references, image_dir, n, out_dir):
     config = NOISE_LEVELS[level]
     name = config["name"]
     final_path, partial_path = _level_paths(level, name, out_dir)
+    logprobs_path = os.path.join(out_dir, f"level_{level}_{name}.logprobs.jsonl")
     if os.path.exists(final_path):
         with open(final_path) as f:
             existing = json.load(f)
@@ -205,6 +209,11 @@ def run_level(vlm, level, questions, references, image_dir, n, out_dir):
             # Save the prediction in the checkpoint so the CSV (and rescore) survive a resume.
             pf.write(json.dumps({"i": i, "follows": label, "pred": pred}) + "\n")
             pf.flush()
+            # Persist API logprobs to a durable sidecar (None for local models).
+            lp = getattr(vlm, "last_logprobs", None)
+            if lp is not None:
+                with open(logprobs_path, "a") as lpf:
+                    lpf.write(json.dumps({"i": i, "logprobs": lp}) + "\n")
 
     # Save per-problem predictions (Phase-1 style) so the reasoning rescore can run
     # post-hoc without re-running the model.
@@ -362,6 +371,7 @@ def run_model(model_key, questions, references, image_dir, n, levels, out_root):
             print(f"  L{level} {res['name']}: no decidable trials")
         rebuild_model_summary(out_dir, model_key, n)  # refresh after each level
 
+    vlm.report_usage()  # measured token cost for API models (no-op for local)
     vlm.unload()
     return rebuild_model_summary(out_dir, model_key, n)
 

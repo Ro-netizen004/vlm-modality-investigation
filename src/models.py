@@ -53,6 +53,23 @@ IMAGE_PROMPT = (
     "End with '#### <answer>'."
 )
 
+# Direct-answer scaffold for conditional log-likelihood scoring (no chain-of-thought,
+# so the scored answer reflects the model's pre-reasoning modality preference).
+DIRECT_IMAGE_PROMPT = (
+    "The image contains a math word problem. "
+    "Give only the final numeric answer in the form '#### <answer>'."
+)
+
+# Approx API prices ($/1M tokens) as (input, output) for usage-cost reporting.
+# Keyed by the API model id (lowercased). Update when prices change.
+API_PRICES = {
+    "gpt-5.6-luna":          (1.00, 6.00),
+    "gpt-4o":                (2.50, 10.00),
+    "gemini-2.5-flash-lite": (0.10, 0.40),
+    "gemini-3.1-flash-lite": (0.25, 1.50),
+    "gemini-3.5-flash":      (1.50, 9.00),
+}
+
 
 class VLMModel:
     """Unified interface for VLM inference across architectures."""
@@ -70,6 +87,10 @@ class VLMModel:
         self.model = None
         self.processor = None
         self.tokenizer = None  # some models need a separate tokenizer
+        # API-model token accounting (populated by openai/gemini calls)
+        self.usage = {"input_tokens": 0, "output_tokens": 0, "calls": 0}
+        # Per-call output-token logprobs from the last API call (None for local models)
+        self.last_logprobs = None
 
     def load(self):
         """Load model and processor."""
@@ -84,6 +105,7 @@ class VLMModel:
             "minicpm": self._load_minicpm,
             "idefics": self._load_idefics,
             "openai": self._load_openai,
+            "gemini": self._load_gemini,
         }
 
         if self.model_type not in loader:
@@ -231,6 +253,7 @@ class VLMModel:
             "minicpm": self._minicpm_text_only,
             "idefics": self._idefics_text_only,
             "openai": self._openai_text_only,
+            "gemini": self._gemini_text_only,
         }
         return dispatch[self.model_type](question)
 
@@ -245,6 +268,7 @@ class VLMModel:
             "minicpm": self._minicpm_with_image,
             "idefics": self._idefics_with_image,
             "openai": self._openai_with_image,
+            "gemini": self._gemini_with_image,
         }
         return dispatch[self.model_type](image, text_prompt)
 
@@ -269,26 +293,60 @@ class VLMModel:
         return "data:image/png;base64," + base64.b64encode(buf.getvalue()).decode()
 
     def _openai_chat(self, content):
-        """One chat completion with exponential backoff on transient errors."""
+        """One chat completion with exponential backoff; records usage + logprobs."""
         import time
+        self.last_logprobs = None
         last_err = None
-        kwargs = dict(model=self.model_name,
-                      messages=[{"role": "user", "content": content}],
-                      max_completion_tokens=max(self.max_new_tokens, 512))
+        base = dict(model=self.model_name,
+                    messages=[{"role": "user", "content": content}],
+                    max_completion_tokens=max(self.max_new_tokens, 512))
         for attempt in range(6):
             try:
-                try:  # greedy-equivalent; some frontier models reject temperature
-                    r = self.model.chat.completions.create(temperature=0, **kwargs)
-                except Exception as e:
-                    if "temperature" in str(e).lower():
-                        r = self.model.chat.completions.create(**kwargs)
-                    else:
-                        raise
+                r = self._openai_create(base)
+                u = getattr(r, "usage", None)
+                if u:
+                    self.usage["input_tokens"] += getattr(u, "prompt_tokens", 0) or 0
+                    self.usage["output_tokens"] += getattr(u, "completion_tokens", 0) or 0
+                self.usage["calls"] += 1
+                self.last_logprobs = self._extract_openai_logprobs(r)
                 return r.choices[0].message.content or ""
             except Exception as e:
                 last_err = e
                 time.sleep(2 ** attempt)  # 1,2,4,8,16,32s
         raise RuntimeError(f"OpenAI call failed after retries: {last_err}")
+
+    def _openai_create(self, base):
+        """Create a completion, dropping optional params the model rejects
+        (temperature, logprobs) so unsupported models still return an answer."""
+        opts = dict(base, temperature=0, logprobs=True, top_logprobs=5)
+        for _ in range(3):
+            try:
+                return self.model.chat.completions.create(**opts)
+            except Exception as e:
+                msg = str(e).lower()
+                if "temperature" in msg and "temperature" in opts:
+                    opts.pop("temperature")
+                elif "logprob" in msg and "logprobs" in opts:
+                    opts.pop("logprobs", None); opts.pop("top_logprobs", None)
+                else:
+                    raise
+        return self.model.chat.completions.create(**opts)
+
+    @staticmethod
+    def _extract_openai_logprobs(r):
+        """[{tok, lp, top:[{tok,lp}...]}, ...] for the generated tokens, or None."""
+        try:
+            content = r.choices[0].logprobs.content
+        except Exception:
+            return None
+        if not content:
+            return None
+        out = []
+        for t in content:
+            top = [{"tok": a.token, "lp": a.logprob}
+                   for a in (getattr(t, "top_logprobs", None) or [])]
+            out.append({"tok": t.token, "lp": t.logprob, "top": top})
+        return out
 
     def _openai_text_only(self, question):
         return self._openai_chat(
@@ -300,6 +358,105 @@ class VLMModel:
             {"type": "image_url",
              "image_url": {"url": self._pil_to_data_url(image), "detail": "high"}},
         ])
+
+    # ══════════════════════════════════════════════════════════════════════════
+    #  GEMINI (Google API frontier models — no GPU; reads GEMINI_API_KEY)
+    # ══════════════════════════════════════════════════════════════════════════
+
+    def _load_gemini(self):
+        """Init the Gemini client (no weights). self.model holds the client."""
+        import os
+        from google import genai
+        api_key = os.environ.get("GEMINI_API_KEY") or os.environ.get("GOOGLE_API_KEY")
+        if not api_key:
+            raise RuntimeError("GEMINI_API_KEY (or GOOGLE_API_KEY) not set in environment.")
+        self.model = genai.Client(api_key=api_key)
+
+    def _gemini_generate(self, contents):
+        """One generate_content call with backoff; records usage + logprobs."""
+        import time
+        from google.genai import types
+        self.last_logprobs = None
+        last_err = None
+        for attempt in range(6):
+            try:
+                try:
+                    r = self.model.models.generate_content(
+                        model=self.model_name, contents=contents,
+                        config=self._gemini_config(types, want_logprobs=True))
+                except Exception as e:
+                    if "logprob" in str(e).lower():  # model/SDK rejects logprobs
+                        r = self.model.models.generate_content(
+                            model=self.model_name, contents=contents,
+                            config=self._gemini_config(types, want_logprobs=False))
+                    else:
+                        raise
+                um = getattr(r, "usage_metadata", None)
+                if um:
+                    self.usage["input_tokens"] += getattr(um, "prompt_token_count", 0) or 0
+                    self.usage["output_tokens"] += getattr(um, "candidates_token_count", 0) or 0
+                self.usage["calls"] += 1
+                self.last_logprobs = self._extract_gemini_logprobs(r)
+                try:
+                    return r.text or ""
+                except Exception:
+                    return ""  # blocked / no candidate → treated as empty prediction
+            except Exception as e:
+                last_err = e
+                time.sleep(2 ** attempt)
+        raise RuntimeError(f"Gemini call failed after retries: {last_err}")
+
+    def _gemini_config(self, types, want_logprobs):
+        kw = dict(temperature=0, max_output_tokens=max(self.max_new_tokens, 512))
+        if want_logprobs:
+            try:
+                return types.GenerateContentConfig(response_logprobs=True, logprobs=5, **kw)
+            except TypeError:
+                pass  # older SDK without logprob fields
+        return types.GenerateContentConfig(**kw)
+
+    @staticmethod
+    def _extract_gemini_logprobs(r):
+        """Best-effort logprob extraction; returns None on any schema mismatch
+        (verified/adjusted after the smoke test)."""
+        try:
+            lr = r.candidates[0].logprobs_result
+        except Exception:
+            return None
+        if lr is None:
+            return None
+        try:
+            chosen = getattr(lr, "chosen_candidates", None) or []
+            out = [{"tok": getattr(c, "token", None),
+                    "lp": getattr(c, "log_probability", None)} for c in chosen]
+            return out or None
+        except Exception:
+            return None
+
+    def _gemini_text_only(self, question):
+        return self._gemini_generate([TEXT_ONLY_PROMPT.format(question=question)])
+
+    def _gemini_with_image(self, image, text_prompt=None):
+        return self._gemini_generate([text_prompt or IMAGE_PROMPT, image.convert("RGB")])
+
+    # ══════════════════════════════════════════════════════════════════════════
+    #  USAGE REPORTING (API models)
+    # ══════════════════════════════════════════════════════════════════════════
+
+    def report_usage(self):
+        """Print measured token usage + estimated cost for API models."""
+        u = self.usage
+        if not u["calls"]:
+            return
+        line = (f"[usage] {self.model_name}: {u['calls']} calls, "
+                f"{u['input_tokens']:,} in + {u['output_tokens']:,} out tokens")
+        price = API_PRICES.get(self.model_name.lower())
+        if price:
+            cost = u["input_tokens"] / 1e6 * price[0] + u["output_tokens"] / 1e6 * price[1]
+            line += f"  ≈ ${cost:.4f}"
+        else:
+            line += "  (no price on file — tokens only)"
+        print(line)
 
     # ══════════════════════════════════════════════════════════════════════════
     #  QWEN (Qwen2-VL, Qwen2.5-VL)
@@ -472,20 +629,123 @@ class VLMModel:
     # ══════════════════════════════════════════════════════════════════════════
 
     def _generate(self, inputs):
-        """Standard HuggingFace generate() — used by all except InternVL2/MiniCPM."""
+        """Standard HuggingFace generate() — used by all except InternVL2/MiniCPM.
+        Captures per-token logprobs into self.last_logprobs (parallels the API paths)."""
         inputs = {k: v.to(self.model.device) for k, v in inputs.items()}
         with torch.no_grad():
-            output_ids = self.model.generate(
+            out = self.model.generate(
                 **inputs,
                 max_new_tokens=self.max_new_tokens,
                 do_sample=False,
                 temperature=None,
                 top_p=None,
                 top_k=None,
+                output_scores=True,
+                return_dict_in_generate=True,
             )
         n = inputs["input_ids"].shape[1]
-        decoded = self.processor.decode(output_ids[0][n:], skip_special_tokens=True)
+        gen_ids = out.sequences[0][n:]
+        self.last_logprobs = self._hf_logprobs(gen_ids, out.scores)
+        decoded = self.processor.decode(gen_ids, skip_special_tokens=True)
         return decoded.strip()
+
+    def _hf_logprobs(self, gen_ids, scores, topk=5):
+        """Per-generated-token logprobs (+ top-k alternatives) from generate() scores."""
+        if not scores:
+            return None
+        out = []
+        try:
+            for t, logits in enumerate(scores):
+                if t >= len(gen_ids):
+                    break
+                lp = torch.log_softmax(logits[0].float(), dim=-1)
+                tok_id = int(gen_ids[t])
+                vals, idx = torch.topk(lp, k=min(topk, lp.shape[-1]))
+                out.append({
+                    "tok": self._decode_tok(tok_id),
+                    "lp": float(lp[tok_id]),
+                    "top": [{"tok": self._decode_tok(int(i)), "lp": float(v)}
+                            for v, i in zip(vals.tolist(), idx.tolist())],
+                })
+        except Exception:
+            return out or None
+        return out or None
+
+    def _decode_tok(self, tok_id):
+        dec = self.tokenizer or self.processor
+        try:
+            return dec.decode([tok_id])
+        except Exception:
+            return str(tok_id)
+
+    # ══════════════════════════════════════════════════════════════════════════
+    #  CONDITIONAL LOG-LIKELIHOOD (teacher-forced answer scoring; open models)
+    # ══════════════════════════════════════════════════════════════════════════
+
+    def _ctx_for_scoring(self, prompt_text):
+        """Templated context string ending at the '#### ' answer position, per model
+        type. Mirrors each type's generation prompt so scoring is on-distribution."""
+        t = self.model_type
+        if t in ("qwen", "llava_onevision"):
+            msgs = [{"role": "user", "content": [
+                {"type": "image"}, {"type": "text", "text": prompt_text}]}]
+            ctx = self.processor.apply_chat_template(
+                msgs, tokenize=False, add_generation_prompt=True)
+        elif t == "idefics":
+            msgs = [{"role": "user", "content": [
+                {"type": "image"}, {"type": "text", "text": prompt_text}]}]
+            ctx = self.processor.apply_chat_template(msgs, add_generation_prompt=True)
+        elif t == "llava":
+            ctx = f"[INST] <image>\n{prompt_text} [/INST]"
+        elif t == "phi":
+            ctx = f"<|user|>\n<|image_1|>\n{prompt_text}<|end|>\n<|assistant|>\n"
+        else:
+            raise NotImplementedError(
+                f"conditional_loglik not implemented for model_type={t}")
+        return ctx + "#### "
+
+    def _score_continuation(self, ctx_text, image, candidate):
+        """Teacher-forced logprob of `candidate` appended to ctx_text (with image).
+        Scores only the candidate tokens. Returns {sum, mean, n} or None."""
+        tok = getattr(self.processor, "tokenizer", None) or self.tokenizer
+        ids_ctx = tok(ctx_text, add_special_tokens=False)["input_ids"]
+        ids_full = tok(ctx_text + candidate, add_special_tokens=False)["input_ids"]
+        n_cand = len(ids_full) - len(ids_ctx)
+        if n_cand <= 0:
+            return None
+        inputs = self.processor(text=[ctx_text + candidate], images=[image],
+                                return_tensors="pt")
+        inputs = {k: v.to(self.model.device) for k, v in inputs.items()}
+        with torch.no_grad():
+            logits = self.model(**inputs).logits[0].float()  # [seq, vocab]
+        ids = inputs["input_ids"][0]
+        # logit at position p-1 predicts token at position p (teacher forcing).
+        total = 0.0
+        for p in range(len(ids) - n_cand, len(ids)):
+            lp = torch.log_softmax(logits[p - 1], dim=-1)
+            total += float(lp[int(ids[p])])
+        return {"sum": total, "mean": total / n_cand, "n": n_cand}
+
+    def conditional_loglik(self, image, candidate, prompt_text=None):
+        """CLL of `candidate` (a numeric answer string) under a direct-answer scaffold,
+        conditioned on `image`. Open _generate-family models only."""
+        ctx = self._ctx_for_scoring(prompt_text or DIRECT_IMAGE_PROMPT)
+        return self._score_continuation(ctx, image, str(candidate))
+
+    def arbitration_margin(self, image, text_answer, image_answer, prompt_text=None):
+        """margin = CLL(text_answer) - CLL(image_answer), per-token normalized.
+        Positive = model favors the TEXT-consistent answer. Returns dict."""
+        ctx = self._ctx_for_scoring(prompt_text or DIRECT_IMAGE_PROMPT)
+        t = self._score_continuation(ctx, image, str(text_answer))
+        im = self._score_continuation(ctx, image, str(image_answer))
+        if t is None or im is None:
+            return None
+        return {
+            "cll_text_mean": t["mean"], "cll_image_mean": im["mean"],
+            "cll_text_sum": t["sum"], "cll_image_sum": im["sum"],
+            "margin_mean": t["mean"] - im["mean"],
+            "margin_sum": t["sum"] - im["sum"],
+        }
 
     # ══════════════════════════════════════════════════════════════════════════
     #  CLEANUP

@@ -1,0 +1,15 @@
+{
+  "level": 4,
+  "name": "blur_noise",
+  "n_problems": 200,
+  "counts": {
+    "text": 184,
+    "neither": 11,
+    "ambiguous": 2,
+    "invalid": 3
+  },
+  "decidable": 184,
+  "text_preference": 1.0,
+  "image_preference": 0.0,
+  "neither_rate": 0.055
+}
