@@ -65,6 +65,9 @@ MODEL_REGISTRY = {
     "InternVL2-8B":                  {"name": "OpenGVLab/InternVL2-8B",             "type": "internvl"},
     "llava-onevision-qwen2-7b-ov-hf":{"name": "llava-hf/llava-onevision-qwen2-7b-ov-hf", "type": "llava_onevision"},
     "Phi-3.5-vision-instruct":       {"name": "microsoft/Phi-3.5-vision-instruct",  "type": "phi"},
+    # Frontier API model (no GPU; needs OPENAI_API_KEY). VERIFY the exact "name"
+    # API id against `curl https://api.openai.com/v1/models` before a full run.
+    "GPT-5.6-Luna":                  {"name": "gpt-5.6-luna",                       "type": "openai"},
 }
 DEFAULT_MODELS = ["Idefics3-8B-Llama3", "Qwen2.5-VL-7B-Instruct"]  # vulnerable + resilient anchors
 ALL_MODELS = list(MODEL_REGISTRY.keys())  # full 8-model set for the headline run

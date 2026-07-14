@@ -83,6 +83,7 @@ class VLMModel:
             "phi": self._load_phi,
             "minicpm": self._load_minicpm,
             "idefics": self._load_idefics,
+            "openai": self._load_openai,
         }
 
         if self.model_type not in loader:
@@ -229,6 +230,7 @@ class VLMModel:
             "phi": self._phi_text_only,
             "minicpm": self._minicpm_text_only,
             "idefics": self._idefics_text_only,
+            "openai": self._openai_text_only,
         }
         return dispatch[self.model_type](question)
 
@@ -242,8 +244,62 @@ class VLMModel:
             "phi": self._phi_with_image,
             "minicpm": self._minicpm_with_image,
             "idefics": self._idefics_with_image,
+            "openai": self._openai_with_image,
         }
         return dispatch[self.model_type](image, text_prompt)
+
+    # ══════════════════════════════════════════════════════════════════════════
+    #  OPENAI (API frontier models — no GPU; reads OPENAI_API_KEY from env)
+    # ══════════════════════════════════════════════════════════════════════════
+
+    def _load_openai(self):
+        """Init the OpenAI client (no weights). self.model holds the client."""
+        import os
+        from openai import OpenAI
+        api_key = os.environ.get("OPENAI_API_KEY")
+        if not api_key:
+            raise RuntimeError("OPENAI_API_KEY not set in environment.")
+        self.model = OpenAI(api_key=api_key)
+
+    @staticmethod
+    def _pil_to_data_url(image):
+        import base64, io
+        buf = io.BytesIO()
+        image.convert("RGB").save(buf, format="PNG")
+        return "data:image/png;base64," + base64.b64encode(buf.getvalue()).decode()
+
+    def _openai_chat(self, content):
+        """One chat completion with exponential backoff on transient errors."""
+        import time
+        last_err = None
+        kwargs = dict(model=self.model_name,
+                      messages=[{"role": "user", "content": content}],
+                      max_completion_tokens=max(self.max_new_tokens, 512))
+        for attempt in range(6):
+            try:
+                try:  # greedy-equivalent; some frontier models reject temperature
+                    r = self.model.chat.completions.create(temperature=0, **kwargs)
+                except Exception as e:
+                    if "temperature" in str(e).lower():
+                        r = self.model.chat.completions.create(**kwargs)
+                    else:
+                        raise
+                return r.choices[0].message.content or ""
+            except Exception as e:
+                last_err = e
+                time.sleep(2 ** attempt)  # 1,2,4,8,16,32s
+        raise RuntimeError(f"OpenAI call failed after retries: {last_err}")
+
+    def _openai_text_only(self, question):
+        return self._openai_chat(
+            [{"type": "text", "text": TEXT_ONLY_PROMPT.format(question=question)}])
+
+    def _openai_with_image(self, image, text_prompt=None):
+        return self._openai_chat([
+            {"type": "text", "text": text_prompt or IMAGE_PROMPT},
+            {"type": "image_url",
+             "image_url": {"url": self._pil_to_data_url(image), "detail": "high"}},
+        ])
 
     # ══════════════════════════════════════════════════════════════════════════
     #  QWEN (Qwen2-VL, Qwen2.5-VL)
