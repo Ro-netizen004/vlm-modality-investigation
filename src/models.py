@@ -94,6 +94,7 @@ class VLMModel:
         self.usage = {"input_tokens": 0, "output_tokens": 0, "calls": 0}
         # Per-call output-token logprobs from the last API call (None for local models)
         self.last_logprobs = None
+        self._openai_supports_logprobs = True  # flipped off if the model rejects logprobs
 
     def load(self):
         """Load model and processor."""
@@ -321,7 +322,9 @@ class VLMModel:
     def _openai_create(self, base):
         """Create a completion, dropping optional params the model rejects
         (temperature, logprobs) so unsupported models still return an answer."""
-        opts = dict(base, temperature=0, logprobs=True, top_logprobs=5)
+        opts = dict(base, temperature=0)
+        if self._openai_supports_logprobs:
+            opts.update(logprobs=True, top_logprobs=5)
         for _ in range(3):
             try:
                 return self.model.chat.completions.create(**opts)
@@ -331,6 +334,7 @@ class VLMModel:
                     opts.pop("temperature")
                 elif "logprob" in msg and "logprobs" in opts:
                     opts.pop("logprobs", None); opts.pop("top_logprobs", None)
+                    self._openai_supports_logprobs = False  # stop asking on later calls
                 else:
                     raise
         return self.model.chat.completions.create(**opts)
