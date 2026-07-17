@@ -47,6 +47,7 @@ import csv
 from src.models import VLMModel
 from src.evaluation import score_mismatch_follows, score_by_reasoning
 from src.noise import NOISE_LEVELS, render_noisy_images, apply_noise_to_images
+from src.text_noise import TEXT_NOISE_LEVELS, degrade_text
 from src.benchmarks import load_benchmark
 
 # Legibility only makes sense on Protocol A (text rendered as an image). We also
@@ -153,16 +154,24 @@ def _clear_stale_partial(partial_path, n):
         print(f"  removed stale partial (~n={old_n}, want {n})")
 
 
-def run_level(vlm, level, questions, references, image_dir, n, out_dir):
-    """Run the mismatch condition for all problems at one noise level.
+def run_level(vlm, level, questions, references, image_dir, n, out_dir, channel="image"):
+    """Run the mismatch condition for all problems at one degradation level.
+
+    channel="image": degrade the image at `level`, text clean (Phase 6).
+    channel="text" : hold the image clean (level 0), degrade the text at `level`
+                     (Phase 7 mirror arm).
 
     Idempotent + resumable:
       * if the final level JSON already exists, it's loaded and returned (skip);
       * otherwise per-problem results are appended to a .partial.jsonl as they
         complete, and a restarted job skips problems already recorded there.
     """
-    config = NOISE_LEVELS[level]
-    name = config["name"]
+    if channel == "text":
+        name = TEXT_NOISE_LEVELS[level]["name"]
+        level_img_dir = os.path.join(image_dir, f"level_0_{NOISE_LEVELS[0]['name']}")  # image held clean
+    else:
+        name = NOISE_LEVELS[level]["name"]
+        level_img_dir = os.path.join(image_dir, f"level_{level}_{name}")
     final_path, partial_path = _level_paths(level, name, out_dir)
     logprobs_path = os.path.join(out_dir, f"level_{level}_{name}.logprobs.jsonl")
     if os.path.exists(final_path):
@@ -186,7 +195,6 @@ def run_level(vlm, level, questions, references, image_dir, n, out_dir):
                     continue  # tolerate a torn last line from a hard kill
         print(f"  L{level} {name}: resuming, {len(done)}/{n} already done")
 
-    level_img_dir = os.path.join(image_dir, f"level_{level}_{name}")
     follows = [None] * n
     preds = [""] * n
 
@@ -199,8 +207,9 @@ def run_level(vlm, level, questions, references, image_dir, n, out_dir):
             img_path = os.path.join(level_img_dir, f"q{i:03d}.png")
             try:
                 img = Image.open(img_path).convert("RGB")
-                pred = vlm.generate_with_image(
-                    img, text_prompt=mismatch_prompt(questions[txt_idx]))
+                q = (degrade_text(questions[txt_idx], level, seed=txt_idx)
+                     if channel == "text" else questions[txt_idx])
+                pred = vlm.generate_with_image(img, text_prompt=mismatch_prompt(q))
             except Exception as e:
                 pred = f"ERROR: {e}"
             label = score_mismatch_follows(pred, references[i], references[txt_idx])
@@ -343,26 +352,28 @@ def rescore_model(out_dir, model_key):
     return summary
 
 
-def run_model(model_key, questions, references, image_dir, n, levels, out_root):
+def run_model(model_key, questions, references, image_dir, n, levels, out_root, channel="image"):
     mc = MODEL_REGISTRY[model_key]
     out_dir = os.path.join(out_root, model_key)
     os.makedirs(out_dir, exist_ok=True)
+    level_name = (lambda L: TEXT_NOISE_LEVELS[L]["name"]) if channel == "text" \
+        else (lambda L: NOISE_LEVELS[L]["name"])
 
     remaining = [
         L for L in levels
-        if not os.path.exists(os.path.join(out_dir, f"level_{L}_{NOISE_LEVELS[L]['name']}.json"))
+        if not os.path.exists(os.path.join(out_dir, f"level_{L}_{level_name(L)}.json"))
     ]
     if not remaining:
         print(f"\n{'='*60}\n  {model_key}: all requested levels done — merging only\n{'='*60}")
         return rebuild_model_summary(out_dir, model_key, n)
 
-    print(f"\n{'='*60}\n  {model_key}  (levels to run: {remaining})\n{'='*60}")
+    print(f"\n{'='*60}\n  {model_key}  (channel={channel}, levels to run: {remaining})\n{'='*60}")
     vlm = VLMModel(model_name=mc["name"], model_type=mc["type"],
                    max_new_tokens=256, torch_dtype="bfloat16")
     vlm.load()
 
     for level in levels:  # run_level self-skips any already-final level
-        res = run_level(vlm, level, questions, references, image_dir, n, out_dir)
+        res = run_level(vlm, level, questions, references, image_dir, n, out_dir, channel=channel)
         tp = res["text_preference"]
         if tp is not None:
             print(f"  L{level} {res['name']:18s}: text_pref={tp:.3f}  "
@@ -456,6 +467,11 @@ def main():
                         help="Problems per benchmark (default 300: full SVAMP; solid GSM8K subset). "
                              "Changing this auto-invalidates level_*.json from a different N.")
     parser.add_argument("--noise-levels", nargs="+", type=int, default=list(range(10)))
+    parser.add_argument("--channel", choices=["image", "text"], default="image",
+                        help="Which channel to degrade: 'image' (Phase 6, default) or "
+                             "'text' (Phase 7 mirror arm: image held clean, text corrupted). "
+                             "Text-channel results are namespaced under text_legibility/. "
+                             "Text channel supports levels 0 2 4 5.")
     parser.add_argument("--noise-image-dir", default=None,
                         help="Where the noisy images live (reused if present). "
                              "Defaults to a per-benchmark dir under the output dir. "
@@ -489,6 +505,12 @@ def main():
     # get their own subdir so results never collide.
     out_root = (args.output_dir if args.benchmark == "gsm8k"
                 else os.path.join(args.output_dir, args.benchmark))
+    if args.channel == "text":
+        bad = [L for L in args.noise_levels if L not in TEXT_NOISE_LEVELS]
+        if bad:
+            raise SystemExit(f"--channel text supports levels {sorted(TEXT_NOISE_LEVELS)}; "
+                             f"got {bad}. Use --noise-levels 0 2 4 5.")
+        out_root = os.path.join(out_root, "text_legibility")  # mirror arm, separate namespace
     os.makedirs(out_root, exist_ok=True)
 
     # ── Merge-only mode: collate the fanned-out per-level results ──
@@ -572,7 +594,7 @@ def main():
             continue
         all_summaries[model_key] = run_model(
             model_key, questions, references, image_dir, n,
-            args.noise_levels, out_root)
+            args.noise_levels, out_root, channel=args.channel)
 
     _atomic_write_json(os.path.join(out_root, "legibility_all.json"), all_summaries)
     print(f"\nLegibility experiment complete ({args.benchmark}).")
