@@ -24,17 +24,23 @@ preference under conflict rather than inferring it from accuracy differences.
 | **3 — Multi-benchmark** | SVAMP, MATH-500, AQuA-RAT (Protocol A) + MathVista, AI2D, ChartQA, ScienceQA (Protocol B) | 7/8 models complete |
 | **4 — Noise ablation** | Rendered-image robustness across 10 corruption levels | 4-model contrast (resilient vs vulnerable) |
 | **5 — Prompt sensitivity** | Can prompting shift modality preference? | In progress |
-| **6 — Legibility** | Modality preference under image degradation (mismatch × noise): does text preference track legibility, or is it a fixed bias? Noise applied to the **canonical HF renders** (Level 0 = the main-experiment image); 8 models × {GSM8K, SVAMP} | In progress |
-| **7 — Mechanistic (attention × legibility)** | Mean text→image attention vs. corruption level — a *ceiling-free* complement to Phase 6 (Qwen family; extends Hua et al.'s router heads onto the reliability axis) | In progress |
+| **6 — Legibility (image arm)** | Modality preference under **image** degradation (mismatch × noise): does text preference track legibility, or is it a fixed prior? Behavioral preference **+ conditional-log-likelihood (CLL) arbitration margin** — a ceiling-free graded measure (6 open models) — **+ frontier binary** (GPT-5.6-Luna). Noise applied to the **canonical HF renders** (Level 0 = the main-experiment image). | GSM8K complete; SVAMP CLL + frontier in progress |
+| **7 — Mirror arm (text degradation)** | Symmetric counterpart: hold the **image** clean, degrade the **text**, measure the trust shift. With Phase 6 this is a psychophysics-style test of whether VLMs are **reliability-weighted observers** (`src/text_noise.py`) | In progress (degradation module built) |
+| **8 — Mechanistic (attention × legibility)** | Mean text→image attention vs. corruption level — a *ceiling-free* complement to Phases 6–7 (Qwen family; extends Hua et al.'s router heads onto the reliability axis) | Planned |
 
-**Target venue:** EACL 2027 (ARR, Aug 3 2026) — main track, with Findings as the
-realistic landing given a mature, fast-moving subfield. Positioned around
-**reliability-aware modality arbitration**: prior conflict work degrades the
-*text* (Deng et al.) or varies *difficulty* (Pezeshkpour et al.); we degrade the
-*image* under conflict and ask whether preference tracks legibility — the axis
-none of them isolate. Phase 7 adds the mechanistic account. Closely related work
-(conflict: Hua et al., Nguyen et al., Deng et al., Pezeshkpour et al.; image-
-degradation reliance: "Diagnosing Visual Ignorance"; robustness: VLM-RobustBench,
+**Target venue:** EACL 2027 (ARR, Aug 3 2026) — Findings the realistic landing,
+main track the stretch. Framed as a **psychophysics-style test of reliability-weighted
+modality arbitration**: a rational observer down-weights whichever channel is
+unreliable (blurry eye → trust the other). We degrade the **image** under conflict
+(Phase 6) and, symmetrically, the **text** (Phase 7), asking whether preference tracks
+each channel's legibility. **Headline so far:** text-dominance is *largely invariant* to
+image legibility — a conditional-log-likelihood analysis (scale-validated, 0.82 agreement
+over n=15,257) shows only **1 of 6** open models robustly down-weights the degraded image
+in probability space — i.e. a **fixed, redundancy-driven prior, not a reliability-weighted
+observer** (with Qwen2.5-VL-7B the notable exception). Differentiated from prior conflict
+work that degrades the *text* (Deng et al.) or varies *difficulty* (Pezeshkpour et al.);
+Phase 8 adds the mechanistic account. Related work (conflict: Hua et al., Nguyen et al.;
+image-degradation reliance: "Diagnosing Visual Ignorance"; robustness: VLM-RobustBench,
 Common Corruptions) is cited and differentiated.
 
 ---
@@ -56,13 +62,25 @@ that engages the image more often (87%); the rest are 96–100%.
 text-only by **+10–63pp** on every model and benchmark (largest on ChartQA, where
 text-only accuracy is near zero).
 
+**Legibility (image arm, CLL ceiling-cracker)** — behavioral preference is pinned
+near ceiling and barely moves as the image degrades. The graded **CLL margin** (scale-
+validated at 0.82 agreement, n=15,257) shows only **Qwen2.5-VL-7B** robustly down-weights
+the degraded image (median margin 0.78→1.54 nats, *p*≈4e-26); the other five open models
+are flat — text-dominance is a **fixed prior, not reliability-weighted arbitration**.
+Frontier **GPT-5.6-Luna**: 95.9→100% text as the image degrades (binary; API exposes no
+logprobs, so no CLL).
+
 ---
 
 ## Repository layout
 
 ```
-src/                  # models (VLMModel), evaluation, multi-benchmark engine, noise
-scripts/              # benchmark runners, rescore, error analysis, GAIVI/SLURM
+src/                  # models (VLMModel: 8 open + OpenAI/Gemini API paths), evaluation,
+│                     #   image noise (noise.py), TEXT noise for the mirror arm (text_noise.py)
+scripts/              # runners, rescore, error analysis, GAIVI/SLURM
+│                     #   legibility: run_legibility.py (--score-cll for CLL, --channel for mirror)
+│                     #   CLL: validate_cll.py, analyze_cll.py, plot_cll.py
+│                     #   frontier: analyze_confidence.py (answer-confidence trajectory, API models)
 notebooks/            # Colab/Kaggle runners + analysis notebooks
 configs/              # model + rendering configuration
 results/
@@ -70,9 +88,10 @@ results/
 ├── phase2_error_analysis_summary.json   # cross-model disagreement analysis
 ├── phase3/<model>/   # multi-benchmark results (Protocol A/B, 7 models)
 ├── phase4/<model>/   # noise ablation results (4-model contrast)
-├── phase6_legibility/[<benchmark>/]<model>/  # modality preference vs image legibility
-│                                             # (gsm8k at root; svamp/ in a subdir)
-└── phase7_attention/[<benchmark>/]<model>/   # text→image attention vs legibility (Qwen family)
+├── phase6_legibility/[<benchmark>/]<model>/  # image-arm preference; per-level CSV/JSON,
+│                                             #   level_*.cll.jsonl (CLL margins), rescore/,
+│                                             #   *.logprobs.jsonl (API models). gsm8k at root.
+└── phase8_attention/[<benchmark>/]<model>/   # text→image attention vs legibility (Qwen family)
 docs/                 # CANONICAL.md (architecture), dataset specs, onboarding
 vlm_benchmark/        # legacy symposium-pilot package (kept for reproducibility)
 ```
@@ -98,6 +117,16 @@ python scripts/run_multi_benchmark.py --benchmarks gsm8k,svamp
 # post-processing: reasoning-trace rescore + error analysis
 python scripts/rescore_mismatch_reasoning.py --model <name>
 python scripts/run_error_analysis.py --models <name>
+
+# Phase 6 — legibility (image arm): behavioral preference + CLL margin
+python scripts/run_legibility.py --benchmark gsm8k --models <name> --noise-levels 0 2 4 5
+python scripts/validate_cll.py --model <name> --benchmark gsm8k --n 30   # gate: sign-agreement ≥0.75
+python scripts/run_legibility.py --benchmark gsm8k --score-cll --models <name> --noise-levels 0 2 4 5
+python scripts/analyze_cll.py && python scripts/plot_cll.py              # tables + figure
+
+# frontier (API): set OPENAI_API_KEY / GEMINI_API_KEY; GPT-5.6-Luna, Gemini-2.5-Flash-Lite
+python scripts/run_legibility.py --benchmark gsm8k --models GPT-5.6-Luna --noise-levels 0 2 4 5
+python scripts/analyze_confidence.py results/phase6_legibility/GPT-5.6-Luna --plot
 ```
 
 **Cluster (SLURM / GAIVI):** see `scripts/gaivi_*.sh`.
@@ -126,11 +155,20 @@ not stored.
 ## Methods
 
 - **Conditions:** text-only, rendered-image, mismatch (image_i + text_{i+1})
+- **Legibility arms:** image degradation (Phase 6, `src/noise.py`) and text
+  degradation (Phase 7 mirror, `src/text_noise.py`), each a monotonic 0/2/4/5 ladder
 - **Scoring:** numeric match; 5-category mismatch (image / text / neither /
   ambiguous / invalid); reasoning-trace rescore of *neither* trials
+- **Graded reliance (ceiling-cracker):** conditional-log-likelihood arbitration margin
+  `CLL(text) − CLL(image)` under a direct-answer scaffold (open models only; teacher-
+  forced, so unavailable to API models). Validated against behavior at scale
+  (sign agreement 0.82, n=15,257). API models: behavioral preference + answer-confidence
+  trajectory where the API exposes logprobs (`analyze_confidence.py`)
 - **Statistics:** McNemar's test, bootstrap + Clopper-Pearson CIs, Cohen's *h*
-  (`src/evaluation.py`)
-- **Models:** 8 open VLMs (2B–8B), greedy decoding, bfloat16, no quantization
+  (`src/evaluation.py`); Mann–Whitney + Spearman trend for CLL trajectories
+- **Models:** 8 open VLMs (2B–8B; greedy, bfloat16, no quantization) + frontier API
+  (GPT-5.6-Luna; Gemini path). CLL covers the 6 open models with a standard `generate`
+  interface (not the two custom-chat models, nor the API models)
 
 ---
 
