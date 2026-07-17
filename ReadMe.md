@@ -25,7 +25,7 @@ preference under conflict rather than inferring it from accuracy differences.
 | **4 — Noise ablation** | Rendered-image robustness across 10 corruption levels | 4-model contrast (resilient vs vulnerable) |
 | **5 — Prompt sensitivity** | Can prompting shift modality preference? | In progress |
 | **6 — Legibility (image arm)** | Modality preference under **image** degradation (mismatch × noise): does text preference track legibility, or is it a fixed prior? Behavioral preference **+ conditional-log-likelihood (CLL) arbitration margin** — a ceiling-free graded measure (6 open models) — **+ frontier binary** (GPT-5.6-Luna). Noise applied to the **canonical HF renders** (Level 0 = the main-experiment image). | GSM8K complete; SVAMP CLL + frontier in progress |
-| **7 — Mirror arm (text degradation)** | Symmetric counterpart: hold the **image** clean, degrade the **text**, measure the trust shift. With Phase 6 this is a psychophysics-style test of whether VLMs are **reliability-weighted observers** (`src/text_noise.py`) | In progress (degradation module built) |
+| **7 — Mirror arm (text degradation)** | Symmetric counterpart: hold the **image** clean, degrade the **text**, measure the trust shift. With Phase 6 this is a psychophysics-style test of whether VLMs are **reliability-weighted observers** (`src/text_noise.py`, `run_legibility.py --channel text`) | Runner built; runs pending |
 | **8 — Mechanistic (attention × legibility)** | Mean text→image attention vs. corruption level — a *ceiling-free* complement to Phases 6–7 (Qwen family; extends Hua et al.'s router heads onto the reliability axis) | Planned |
 
 **Target venue:** EACL 2027 (ARR, Aug 3 2026) — Findings the realistic landing,

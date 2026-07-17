@@ -72,7 +72,7 @@ Aligned `text_and_image` exists only in `vlm_benchmark/experiments/runner.py` �
 **Phase map (canonical numbering — keep consistent with `ReadMe.md`):**
 1 GSM8K · 2 Error analysis · 3 Multi-benchmark · 4 Noise ablation ·
 5 Prompt sensitivity · 6 Legibility image arm (`scripts/run_legibility.py`; `--score-cll` = CLL margin) ·
-7 Mirror arm — text degradation (`src/text_noise.py` built; `run_legibility.py --channel text` plumbing WIP) ·
+7 Mirror arm — text degradation (`src/text_noise.py` + `run_legibility.py --channel text`; built, runs pending) ·
 8 Mechanistic attention × legibility (`scripts/run_attention_legibility.py`, Qwen family).
 
 ## Reproducibility checklist (new runs)
