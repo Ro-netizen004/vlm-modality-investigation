@@ -52,3 +52,6 @@ data/render_progress.json
 paper/
 
 
+
+# Generated conflict dataset (large; lives on HF, not git)
+data/conflict_dataset*
