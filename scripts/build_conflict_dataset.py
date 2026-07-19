@@ -6,34 +6,49 @@ Consolidates the controlled text-image *conflict* stimuli used in the Phase 6
 legibility experiment into a single standardized, model-agnostic dataset that
 others can run their own VLM against.
 
-One row == one conflict instance:
+One row == one conflict instance. Two symmetric arms share one schema:
 
-    image  = rendered problem  i           (degraded at `degradation_level`)
-    text   = problem (i+1) % n              (the conflicting statement)
-    the two ground-truth answers are carried side by side, so "which modality
-    did the model follow?" is decidable.
+    channel="image" (Phase 6): image = rendered problem i, DEGRADED at `level`;
+                               text  = clean problem (i+1)          (conflict via image)
+    channel="text"  (Phase 7): image = rendered problem i, CLEAN (level 0);
+                               text  = problem (i+1), DEGRADED at `level`  (conflict via text)
+
+In both, the two ground-truth answers are carried side by side, so "which
+modality did the model follow?" is decidable from output text alone.
 
 This is the MISMATCH construction from scripts/run_legibility.py, made
 reproducible outside any model run:
     * text fields + both answers come from the (model-agnostic) legibility CSVs,
       which are exactly what was presented/scored;
-    * image bytes are regenerated from the canonical HF renders with the same
-      noise transform and seed (src.noise.apply_noise_level, seed = 42 + i),
-      so Level 0 is pixel-identical to the Phase 1/3 baseline.
+    * IMAGE arm: image bytes are regenerated from the canonical HF renders with the
+      same noise transform and seed (src.noise.apply_noise_level, seed = 42 + i),
+      so Level 0 is pixel-identical to the Phase 1/3 baseline;
+    * TEXT arm: the image is the clean canonical render; the conflicting text is
+      corrupted with src.text_noise.degrade_text(text, level, seed=text_problem_id),
+      matching run_legibility's --channel text seeding exactly.
 
-Schema is `channel`-keyed so the text-degradation mirror arm (Phase 7) drops in
-later as rows with channel="text" — no schema change, no rework.
+Column convention (consistent across arms): the *_question columns are always the
+CLEAN problem text (labels), and the degradation always lives in the presented
+modality — the `image` bytes (image arm) or the `prompt` string (text arm). So
+`prompt` always contains the real, possibly-corrupted text the model was shown,
+and is reproducible from (text_question, degradation_level, text_problem_id).
+
+Schema is `channel`-keyed, so both arms coexist with no schema change.
 
 Usage:
     # fast validation — assemble metadata only, no image generation
     python scripts/build_conflict_dataset.py --dry-run
 
-    # small end-to-end smoke test (10 problems, levels 0 & 5, svamp only)
+    # small end-to-end smoke test (10 problems, levels 0 & 5, svamp, both arms)
     python scripts/build_conflict_dataset.py --sources svamp --levels 0 5 --limit 10 \
         --out data/conflict_dataset_smoke
 
-    # full v1 build (gsm8k + svamp, image arm, levels 0/2/4/5)
-    python scripts/build_conflict_dataset.py --out data/conflict_dataset_v1
+    # full v2 build — BOTH arms (gsm8k + svamp, image+text, levels 0/2/4/5)
+    python scripts/build_conflict_dataset.py --out data/conflict_dataset_v2
+
+    # single-arm builds
+    python scripts/build_conflict_dataset.py --channel image --out data/conflict_dataset_v1
+    python scripts/build_conflict_dataset.py --channel text  --out data/conflict_dataset_text
 """
 import argparse
 import os
@@ -45,6 +60,12 @@ import pandas as pd
 sys.path.insert(0, str(Path(__file__).resolve().parent.parent))
 
 from src.noise import NOISE_LEVELS, apply_noise_level  # noqa: E402
+from src.text_noise import TEXT_NOISE_LEVELS, degrade_text  # noqa: E402
+
+
+def ladder_for(channel):
+    """Degradation ladder + level-name map for a channel (image vs text noise)."""
+    return TEXT_NOISE_LEVELS if channel == "text" else NOISE_LEVELS
 
 # ── Source config ──────────────────────────────────────────────────────────────
 # Stimuli are identical across models (verified); use one fully-covered model as
@@ -123,40 +144,60 @@ def load_canonical_images(source: str, expected_questions):
     return images
 
 
-def build_rows(source, levels, limit, with_images):
+def build_rows(source, levels, limit, with_images, channels):
     stim = load_stimuli(source)
-    n = len(stim)
-    if limit:
-        n = min(n, limit)
+    n_full = len(stim)
+    n = min(n_full, limit) if limit else n_full
     clean_images = None
     if with_images:
         clean_images = load_canonical_images(source, stim["image_question"].tolist())
 
     rows = []
-    for level in levels:
-        name = NOISE_LEVELS[level]["name"]
-        for i in range(n):
-            rec = {
-                "id": f"{source}-image-L{level}-{i:04d}",
-                "source": source,
-                "conflict_type": "mismatch",
-                "channel": "image",
-                "degradation_level": level,
-                "degradation_name": name,
-                "image_problem_id": i,
-                "text_problem_id": (i + 1) % len(stim),
-                "image_question": stim.at[i, "image_question"],
-                "text_question": stim.at[i, "text_question"],
-                "image_answer": str(stim.at[i, "image_answer"]),
-                "text_answer": str(stim.at[i, "text_answer"]),
-                "prompt": mismatch_prompt(stim.at[i, "text_question"]),
-                "image_seed": IMAGE_SEED_BASE + i,
-            }
-            if with_images:
-                rec["image"] = apply_noise_level(
-                    clean_images[i], level,
-                    text=stim.at[i, "image_question"], seed=IMAGE_SEED_BASE + i)
-            rows.append(rec)
+    for channel in channels:
+        ladder = ladder_for(channel)
+        chan_levels = [L for L in levels if L in ladder]
+        skipped = [L for L in levels if L not in ladder]
+        if skipped:
+            print(f"  [{source}/{channel}] skipping levels {skipped} "
+                  f"(supported: {sorted(ladder)})")
+        for level in chan_levels:
+            name = ladder[level]["name"]
+            for i in range(n):
+                text_pid = (i + 1) % n_full  # conflicting text = problem i+1
+                # The *_question columns stay CLEAN in both arms; the degradation
+                # lives in the presented modality (image bytes / prompt string).
+                if channel == "text":
+                    # Mirror arm: image clean, text corrupted (seed matches
+                    # run_legibility --channel text, seed = text_problem_id).
+                    presented_text = degrade_text(
+                        stim.at[i, "text_question"], level, seed=text_pid)
+                    image = clean_images[i] if with_images else None
+                else:
+                    # Image arm: text clean, image degraded at this level.
+                    presented_text = stim.at[i, "text_question"]
+                    image = (apply_noise_level(
+                        clean_images[i], level,
+                        text=stim.at[i, "image_question"], seed=IMAGE_SEED_BASE + i)
+                        if with_images else None)
+                rec = {
+                    "id": f"{source}-{channel}-L{level}-{i:04d}",
+                    "source": source,
+                    "conflict_type": "mismatch",
+                    "channel": channel,
+                    "degradation_level": level,
+                    "degradation_name": name,
+                    "image_problem_id": i,
+                    "text_problem_id": text_pid,
+                    "image_question": stim.at[i, "image_question"],
+                    "text_question": stim.at[i, "text_question"],
+                    "image_answer": str(stim.at[i, "image_answer"]),
+                    "text_answer": str(stim.at[i, "text_answer"]),
+                    "prompt": mismatch_prompt(presented_text),
+                    "image_seed": IMAGE_SEED_BASE + i,
+                }
+                if with_images:
+                    rec["image"] = image
+                rows.append(rec)
     return rows, n
 
 
@@ -164,30 +205,45 @@ def main():
     ap = argparse.ArgumentParser()
     ap.add_argument("--sources", nargs="+", default=list(SOURCES),
                     choices=list(SOURCES))
+    ap.add_argument("--channel", default="both", choices=["image", "text", "both"],
+                    help="which conflict arm(s) to build: 'image' (Phase 6), "
+                         "'text' (Phase 7 mirror), or 'both' (default). Levels not "
+                         "in a channel's ladder are skipped for that channel; the "
+                         "text ladder supports 0/2/4/5.")
     ap.add_argument("--levels", nargs="+", type=int, default=DEFAULT_LEVELS,
                     choices=list(NOISE_LEVELS))
     ap.add_argument("--limit", type=int, default=None,
                     help="cap problems per source (smoke tests)")
-    ap.add_argument("--out", default="data/conflict_dataset_v1")
+    ap.add_argument("--out", default="data/conflict_dataset_v2")
     ap.add_argument("--dry-run", action="store_true",
                     help="assemble metadata only; skip image generation and save")
     args = ap.parse_args()
 
+    channels = ["image", "text"] if args.channel == "both" else [args.channel]
+
     with_images = not args.dry_run
     all_rows = []
     for source in args.sources:
-        rows, n = build_rows(source, args.levels, args.limit, with_images)
-        print(f"{source:8s} n={n:4d}  levels={args.levels}  -> {len(rows):5d} rows")
+        rows, n = build_rows(source, args.levels, args.limit, with_images, channels)
+        print(f"{source:8s} n={n:4d}  channels={channels}  levels={args.levels}  "
+              f"-> {len(rows):5d} rows")
         all_rows.append((source, rows))
 
-    total = sum(len(r) for _, r in all_rows)
-    print(f"\nTOTAL rows: {total}")
+    flat = [r for _, rows in all_rows for r in rows]
+    total = len(flat)
+    from collections import Counter
+    by_chan = Counter(r["channel"] for r in flat)
+    print(f"\nTOTAL rows: {total}  ({dict(by_chan)})")
 
-    # Show one sample (without the image object) so the schema is legible.
-    sample = {k: v for k, v in all_rows[0][1][0].items() if k != "image"}
+    # Show one sample per channel (without the image object) so the schema is legible.
     import json
-    print("\nSample row (image omitted):")
-    print(json.dumps(sample, indent=2, ensure_ascii=False)[:1200])
+    for chan in channels:
+        ex = next((r for r in flat if r["channel"] == chan), None)
+        if ex is None:
+            continue
+        sample = {k: v for k, v in ex.items() if k != "image"}
+        print(f"\nSample row — channel={chan} (image omitted):")
+        print(json.dumps(sample, indent=2, ensure_ascii=False)[:1200])
 
     if args.dry_run:
         print("\n[dry-run] metadata assembled OK; no images generated, nothing written.")
@@ -211,8 +267,7 @@ def main():
         "prompt": Value("string"),
         "image_seed": Value("int32"),
     })
-    flat = [r for _, rows in all_rows for r in rows]
-    ds = Dataset.from_list(flat, features=features)
+    ds = Dataset.from_list(flat, features=features)  # `flat` assembled above
     out = Path(args.out)
     out.parent.mkdir(parents=True, exist_ok=True)
     ds.save_to_disk(str(out))

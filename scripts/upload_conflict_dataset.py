@@ -27,8 +27,10 @@ from pathlib import Path
 from datasets import load_from_disk
 from huggingface_hub import HfApi, whoami
 
-DEFAULT_REPO = "vlm-modality-research/modality-conflict-arbitration-v1"
-DEFAULT_DATA = "data/conflict_dataset_v1"
+# v2 == both arms (image degradation + text-degradation mirror). Use the v1 repo /
+# data dir explicitly (--repo/--data-dir) if you specifically want the image-only build.
+DEFAULT_REPO = "vlm-modality-research/modality-conflict-arbitration-v2"
+DEFAULT_DATA = "data/conflict_dataset_v2"
 
 
 def main():
@@ -63,9 +65,16 @@ def main():
     print(f"Pushing to {args.repo}  (private={private}) ...")
     ds.push_to_hub(args.repo, private=private)
 
-    # Upload the dataset card as the repo README.
+    # Upload the dataset card as the repo README. Prefer a card placed in the
+    # (gitignored) data dir; otherwise fall back to the version-controlled card in
+    # docs/ so the Hub page is documented with no manual copy step.
     card = data_dir / "README.md"
+    if not card.exists():
+        repo_card = Path(__file__).resolve().parent.parent / "docs" / "CONFLICT_DATASET_CARD.md"
+        if repo_card.exists():
+            card = repo_card
     if card.exists():
+        print(f"Using dataset card: {card}")
         HfApi().upload_file(
             path_or_fileobj=str(card),
             path_in_repo="README.md",
