@@ -25,7 +25,7 @@ preference under conflict rather than inferring it from accuracy differences.
 | **4 — Noise ablation** | Rendered-image robustness across 10 corruption levels | 4-model contrast (resilient vs vulnerable) |
 | **5 — Prompt sensitivity** | Can prompting shift modality preference? | In progress |
 | **6 — Legibility (image arm)** | Modality preference under **image** degradation (mismatch × noise): does text preference track legibility, or is it a fixed prior? Behavioral preference **+ conditional-log-likelihood (CLL) arbitration margin** — a ceiling-free graded measure (6 open models) — **+ frontier binary** (GPT-5.6-Luna). Noise applied to the **canonical HF renders** (Level 0 = the main-experiment image). | GSM8K complete; SVAMP CLL + frontier in progress |
-| **7 — Mirror arm (text degradation)** | Symmetric counterpart: hold the **image** clean, degrade the **text**, measure the trust shift. With Phase 6 this is a psychophysics-style test of whether VLMs are **reliability-weighted observers** (`src/text_noise.py`, `run_legibility.py --channel text`) | Runner built; runs pending |
+| **7 — Mirror arm (text degradation)** | Symmetric counterpart: hold the **image** clean, degrade the **text**, measure the trust shift. Behavioral preference **+ CLL arbitration margin** (`--score-cll --channel text`) — a true mirror of the Phase 6 arm. With Phase 6 this is a psychophysics-style test of whether VLMs are **reliability-weighted observers** (`src/text_noise.py`, `run_legibility.py --channel text`, `scripts/gaivi_run_text_legibility_parallel.sh`) | Runner + CLL wired; smoke-test then full grid |
 | **8 — Mechanistic (attention × legibility)** | Mean text→image attention vs. corruption level — a *ceiling-free* complement to Phases 6–7 (Qwen family; extends Hua et al.'s router heads onto the reliability axis) | Planned |
 
 **Target venue:** EACL 2027 (ARR, Aug 3 2026) — Findings the realistic landing,
@@ -123,6 +123,11 @@ python scripts/run_legibility.py --benchmark gsm8k --models <name> --noise-level
 python scripts/validate_cll.py --model <name> --benchmark gsm8k --n 30   # gate: sign-agreement ≥0.75
 python scripts/run_legibility.py --benchmark gsm8k --score-cll --models <name> --noise-levels 0 2 4 5
 python scripts/analyze_cll.py && python scripts/plot_cll.py              # tables + figure
+
+# Phase 7 — mirror arm (text degradation): image held clean, text corrupted (levels 0 2 4 5)
+python scripts/run_legibility.py --channel text --benchmark gsm8k --models <name> --noise-levels 0 2 4 5
+python scripts/run_legibility.py --channel text --score-cll --benchmark gsm8k --models <name> --noise-levels 0 2 4 5
+bash scripts/gaivi_run_text_legibility_parallel.sh                       # full grid on GAIVI (RUN_CLL=1 default)
 
 # frontier (API): set OPENAI_API_KEY / GEMINI_API_KEY; GPT-5.6-Luna, Gemini-2.5-Flash-Lite
 python scripts/run_legibility.py --benchmark gsm8k --models GPT-5.6-Luna --noise-levels 0 2 4 5

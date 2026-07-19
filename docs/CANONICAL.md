@@ -22,22 +22,34 @@ openai/gsm8k (test)
 - Local/CLI: `python scripts/run_benchmark.py --config configs/default.yaml`
 - Multi-benchmark: `python scripts/run_multi_benchmark.py`
 
-**Legibility + mechanistic pipeline (Phases 6–7):**
+**Legibility + mechanistic pipeline (Phases 6–8):**
 
 ```
 canonical HF renders (Protocol A: gsm8k/svamp/math)
     → src/noise.apply_noise_to_images   (noise ON TOP of canonical; Level 0 == baseline)
-    → Phase 6  scripts/run_legibility.py           → text-preference vs level
-    → Phase 7  scripts/run_attention_legibility.py → text→image attention vs level (Qwen only)
+    → Phase 6  scripts/run_legibility.py                    → text-preference vs IMAGE level
+    →          scripts/run_legibility.py --channel text     → text-preference vs TEXT level (Phase 7 mirror)
+    →          scripts/run_legibility.py --score-cll [--channel text]  → CLL arbitration margin (both arms)
+    → Phase 8  scripts/run_attention_legibility.py          → text→image attention vs level (Qwen only)
     → scripts/plot_legibility.py [--attention-results-dir ...]
 ```
 
-- Fan-out on GAIVI: `scripts/gaivi_run_legibility_parallel.sh` (one SLURM job per
-  benchmark × model × level; prep job renders noisy images once to avoid races).
+- **Phase 6 (image arm):** degrade the image, hold text clean. Results at the
+  `output-dir` root. Fan-out: `scripts/gaivi_run_legibility_parallel.sh`.
+- **Phase 7 (text arm / mirror):** hold the image clean (level-0 render), degrade the
+  **text** via `src/text_noise.degrade_text` (monotonic ladder 0/2/4/5), same mismatch
+  trials and scoring. Enabled by `--channel text`; results namespaced under
+  `text_legibility/`. Fan-out: `scripts/gaivi_run_text_legibility_parallel.sh` (one job
+  per model, all levels together — text degradation is a string op, no per-level image
+  cost). Both arms also support the CLL arbitration margin (`--score-cll`), which honors
+  `--channel`; the text arm corrupts with `seed=txt_idx` so the CLL run scores the *same*
+  string the generation run saw and the reasoning-label join stays coherent.
+- Fan-out prep job renders the canonical images once to avoid races (the text arm needs
+  only the level-0 clean render).
 - **Do not** re-render text for legibility — apply noise to the canonical HF image
   (`apply_noise_to_images`), not `render_noisy_images`, so Level 0 matches Phase 1/3.
-- Phase 7 attention needs `attn_implementation="eager"`; reliable only on the Qwen
-  family so far. Run `run_attention_legibility.py --smoke` before any full grid.
+- **Phase 8 (attention):** `run_attention_legibility.py` needs `attn_implementation="eager"`;
+  reliable only on the Qwen family so far. Run `--smoke` before any full grid.
 
 ---
 

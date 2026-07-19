@@ -391,13 +391,27 @@ def run_model(model_key, questions, references, image_dir, n, levels, out_root, 
 CLL_TYPES = {"qwen", "llava", "llava_onevision", "phi", "idefics"}
 
 
-def run_cll_level(vlm, level, questions, references, image_dir, n, out_dir):
-    """Per mismatch trial, compute the arbitration margin CLL(text) - CLL(image) on the
-    level's degraded image, and JOIN the reasoning label from the generation CSV so the
-    downstream stratified analysis is ready. Writes/append level_X.cll.jsonl (resumable)."""
-    name = NOISE_LEVELS[level]["name"]
+def run_cll_level(vlm, level, questions, references, image_dir, n, out_dir, channel="image"):
+    """Per mismatch trial, compute the arbitration margin CLL(text) - CLL(image), and JOIN
+    the reasoning label from the generation CSV so the downstream stratified analysis is
+    ready. Writes/append level_X.cll.jsonl (resumable).
+
+    channel="image": margin scored on the level's DEGRADED image, text clean (Phase 6).
+    channel="text" : image held CLEAN (level 0), the TEXT in the scaffold degraded at
+                     `level` (Phase 7 mirror arm). The seed matches run_level's
+                     (seed=txt_idx) so the CLL run scores the SAME corrupted string the
+                     generation run saw — the reasoning-label join stays coherent.
+
+    True mirror: as the image degrades the margin should rise toward text; as the text
+    degrades it should fall toward the image, if the model weighs channels by reliability.
+    """
+    if channel == "text":
+        name = TEXT_NOISE_LEVELS[level]["name"]
+        level_img_dir = os.path.join(image_dir, f"level_0_{NOISE_LEVELS[0]['name']}")  # image held clean
+    else:
+        name = NOISE_LEVELS[level]["name"]
+        level_img_dir = os.path.join(image_dir, f"level_{level}_{name}")
     cll_path = os.path.join(out_dir, f"level_{level}_{name}.cll.jsonl")
-    level_img_dir = os.path.join(image_dir, f"level_{level}_{name}")
 
     # Reasoning label + binary follows come from the generation CSV, if present.
     gen = {}
@@ -423,9 +437,11 @@ def run_cll_level(vlm, level, questions, references, image_dir, n, out_dir):
             txt_idx = (i + 1) % n  # image = problem i, text = problem txt_idx
             try:
                 img = Image.open(os.path.join(level_img_dir, f"q{i:03d}.png")).convert("RGB")
+                text_q = (degrade_text(questions[txt_idx], level, seed=txt_idx)
+                          if channel == "text" else questions[txt_idx])
                 m = vlm.arbitration_margin(
                     img, text_answer=references[txt_idx], image_answer=references[i],
-                    text_question=questions[txt_idx])
+                    text_question=text_q)
             except Exception as e:
                 m = None
             rec = {"i": i, "level": level, "margin": m}
@@ -440,7 +456,7 @@ def run_cll_level(vlm, level, questions, references, image_dir, n, out_dir):
     return cll_path
 
 
-def run_cll_model(model_key, questions, references, image_dir, n, levels, out_root):
+def run_cll_model(model_key, questions, references, image_dir, n, levels, out_root, channel="image"):
     """Score CLL arbitration margins across levels for one open model."""
     mc = MODEL_REGISTRY[model_key]
     if mc["type"] not in CLL_TYPES:
@@ -449,12 +465,12 @@ def run_cll_model(model_key, questions, references, image_dir, n, levels, out_ro
         return
     out_dir = os.path.join(out_root, model_key)
     os.makedirs(out_dir, exist_ok=True)
-    print(f"\n{'='*60}\n  CLL scoring: {model_key}  (levels {levels})\n{'='*60}")
+    print(f"\n{'='*60}\n  CLL scoring: {model_key}  (channel={channel}, levels {levels})\n{'='*60}")
     vlm = VLMModel(model_name=mc["name"], model_type=mc["type"],
                    max_new_tokens=256, torch_dtype="bfloat16")
     vlm.load()
     for level in levels:
-        run_cll_level(vlm, level, questions, references, image_dir, n, out_dir)
+        run_cll_level(vlm, level, questions, references, image_dir, n, out_dir, channel=channel)
     vlm.unload()
 
 
@@ -491,11 +507,13 @@ def main():
                              "race to render the same files.")
     parser.add_argument("--score-cll", action="store_true",
                         help="Conditional-log-likelihood mode: per trial compute the "
-                             "arbitration margin CLL(text)-CLL(image) on each level's "
-                             "degraded image, joined with the reasoning label from the "
-                             "generation CSV. Open _generate models only. Writes "
-                             "level_X.cll.jsonl. Needs the noisy images (and, for the join, "
-                             "the generation CSVs) present.")
+                             "arbitration margin CLL(text)-CLL(image), joined with the "
+                             "reasoning label from the generation CSV. Honors --channel: "
+                             "'image' degrades the image (text clean); 'text' holds the "
+                             "image clean and degrades the scaffold text (Phase 7 mirror). "
+                             "Open _generate models only. Writes level_X.cll.jsonl. Needs "
+                             "the level-0 clean images (and, for the join, the generation "
+                             "CSVs) present.")
     args = parser.parse_args()
 
     torch.manual_seed(42)
@@ -554,21 +572,28 @@ def main():
               "expect a smaller decidable set than GSM8K/SVAMP.")
 
     image_dir = args.noise_image_dir or os.path.join(out_root, "noise_images")
+    # The text (mirror-arm) channel corrupts the STRING and always reads the image
+    # from level_0_clean (see run_level), whatever --noise-levels is requested. So
+    # it needs ONLY the level-0 clean images — never the noisy dirs. Prepping just
+    # level 0 both fixes the missing-image bug (a per-level fan-out job like
+    # --noise-levels 5 would otherwise render only level_5 and fail to open
+    # level_0_clean) and avoids rendering noisy images that are never read.
+    prep_levels = [0] if args.channel == "text" else args.noise_levels
     have_images = all(
         os.path.isdir(os.path.join(image_dir, f"level_{L}_{NOISE_LEVELS[L]['name']}"))
-        for L in args.noise_levels
+        for L in prep_levels
     )
     if not have_images:
         os.makedirs(image_dir, exist_ok=True)
         if all(img is not None for img in images):
             print(f"Applying noise to canonical HF images → {image_dir} ...")
             apply_noise_to_images(images, image_dir,
-                                  noise_levels=args.noise_levels, texts=questions)
+                                  noise_levels=prep_levels, texts=questions)
         else:
             missing = sum(img is None for img in images)
             print(f"WARNING: {missing} canonical images missing — falling back to "
                   f"fresh text render (Level 0 may not match the main experiments).")
-            render_noisy_images(questions, image_dir, noise_levels=args.noise_levels)
+            render_noisy_images(questions, image_dir, noise_levels=prep_levels)
     else:
         print(f"Reusing existing noisy images from {image_dir}")
 
@@ -581,10 +606,10 @@ def main():
         for model_key in args.models:
             if model_key in MODEL_REGISTRY:
                 run_cll_model(model_key, questions, references, image_dir, n,
-                              args.noise_levels, out_root)
+                              args.noise_levels, out_root, channel=args.channel)
             else:
                 print(f"Unknown model '{model_key}' — skipping")
-        print(f"\nCLL scoring complete ({args.benchmark}).")
+        print(f"\nCLL scoring complete ({args.benchmark}, channel={args.channel}).")
         return
 
     all_summaries = {}
