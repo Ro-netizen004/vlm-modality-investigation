@@ -44,18 +44,42 @@ results/phase_control/
 Arbitration is read from `results/phase6_legibility/<bm>/<model>/` (image arm) and
 `results/phase7_text_legibility/<bm>/<model>/` (text arm) — no duplication.
 
+## N per axis (why they differ)
+
+| Axis | svamp | gsm8k | why |
+|------|-------|-------|-----|
+| **survival** (OCR/CER) | 300 | **1319** | cheap (CPU/free) → match the arbitration N, and future-proof a per-trial control |
+| **task_acc** (VLM accuracy) | 300 | 300 | GPU per-model; a per-level accuracy is stable at 300 (±~5%), 1319 = 4.4x compute for ~0 gain |
+
+Match survival to the arbitration N (svamp=300, gsm8k=1319). Keep task_acc at 300 both.
+
 ## Run (svamp first — its CLL arbitration is complete)
 
+**task_acc** (GPU, per model — runs in the `vlm` env alongside the grid):
 ```bash
-# 1. legibility axes
-#   task_acc (GPU, per model)
-for M in Idefics3-8B-Llama3 Phi-3.5-vision-instruct Qwen2-VL-2B-Instruct \
-         Qwen2.5-VL-7B-Instruct llava-onevision-qwen2-7b-ov-hf llava-v1.6-mistral-7b-hf; do
-  python scripts/measure_legibility_decodability.py --models $M --benchmark svamp --num-problems 300
+for BM_N in "svamp 300" "gsm8k 300"; do set -- $BM_N; BM=$1; N=$2
+  for M in Idefics3-8B-Llama3 Phi-3.5-vision-instruct Qwen2-VL-2B-Instruct \
+           Qwen2.5-VL-7B-Instruct llava-onevision-qwen2-7b-ov-hf llava-v1.6-mistral-7b-hf; do
+    python scripts/measure_legibility_decodability.py --models $M --benchmark $BM --num-problems $N
+  done
 done
-#   survival (CPU; needs tesseract for the image channel)
-python scripts/measure_legibility_survival.py --benchmark svamp --num-problems 300
+```
 
-# 2. the control test (runs the interaction regression for each available axis)
+**survival** (CPU, model-independent). Use an ISOLATED conda env so the tesseract install
+never perturbs the `vlm` env your running/queued jobs depend on:
+```bash
+conda create -y -n ocr -c conda-forge python=3.11 tesseract pillow numpy
+conda activate ocr && pip install pytesseract datasets tqdm
+export HF_HOME=/data/rg21/hf_cache
+python scripts/measure_legibility_survival.py --benchmark svamp --num-problems 300
+python scripts/measure_legibility_survival.py --benchmark gsm8k --num-problems 1319
+conda deactivate   # (conda env remove -n ocr when done)
+```
+Do **not** `conda install tesseract` into `vlm` while the grid is queued — it can bump shared
+packages and every pending job would inherit the change.
+
+## The control test (interaction regression for each available axis)
+```bash
 python scripts/analyze_legibility_control.py --benchmark svamp --metric cll
+python scripts/analyze_legibility_control.py --benchmark gsm8k --metric cll
 ```
