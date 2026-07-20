@@ -69,6 +69,10 @@ MODEL_REGISTRY = {
     # Frontier API model (no GPU; needs OPENAI_API_KEY). VERIFY the exact "name"
     # API id against `curl https://api.openai.com/v1/models` before a full run.
     "GPT-5.6-Luna":                  {"name": "gpt-5.6-luna",                       "type": "openai"},
+    # OpenAI mini (multimodal, needs OPENAI_API_KEY). Unlike Luna it SUPPORTS logprobs,
+    # so the answer-confidence trajectory (scripts/analyze_confidence.py) is available —
+    # a graded API-side signal (NOT the CLL margin, which needs candidate scoring).
+    "GPT-4o-mini":                   {"name": "gpt-4o-mini",                        "type": "openai"},
     # Frontier API model (no GPU; needs GEMINI_API_KEY). VERIFY the exact id via
     # the Gemini models list before a full run.
     "Gemini-2.5-Flash-Lite":         {"name": "gemini-2.5-flash-lite",              "type": "gemini"},
