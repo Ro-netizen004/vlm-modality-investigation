@@ -5,8 +5,10 @@ Read this file **before** writing or refactoring code in this repo.
 ## First steps (every session)
 
 1. `git pull origin main`
-2. Skim `docs/CANONICAL.md` (project source of truth)
-3. Do **not** create parallel pipelines — extend what exists
+2. **Read `docs/PROJECT_STATUS.md`** — live handoff: experiment status, GAIVI commands/paths,
+   known issues (MiniCPM version break, `/data` quota, login-node numpy, sbatch gotchas)
+3. Skim `docs/CANONICAL.md` (architecture source of truth)
+4. Do **not** create parallel pipelines — extend what exists
 
 ## What this project is
 

@@ -291,22 +291,40 @@ def rebuild_model_summary(out_dir, model_key, n):
     return summary
 
 
-def rescore_level_from_csv(csv_path):
+def rescore_level_from_csv(csv_path, channel="image", level=None):
     """Read a level's prediction CSV and reclassify 'neither' trials by reasoning
-    trace. Returns raw and rescored counts + text preferences (Phase-1 style)."""
+    trace. Returns raw and rescored counts + text preferences (Phase-1 style).
+
+    channel/level keep the reasoning rescore FAITHFUL to what the model actually saw.
+    In the TEXT channel (Phase 7 mirror arm) the model read a *corrupted* text question,
+    but the CSV stores the CLEAN one. Matching the reasoning trace against the clean text
+    undercounts genuine text-following at high corruption (the model echoes corrupted
+    tokens that don't match the clean keywords), which would fake part of the mirror
+    shift toward the image -- an evaluator-side confound. So for channel=="text" we
+    reconstruct the exact corrupted string (degrade_text is deterministic given
+    text+level+seed, seed=txt_idx=(problem_id+1)%n) before keyword/number matching.
+    The IMAGE is held clean in the text channel, so image_question is left untouched.
+    Phase 6 (channel=="image") is unaffected: corrupt stays False, output is identical.
+    """
     raw, resc = Counter(), Counter()
-    n = 0
     with open(csv_path, newline="", encoding="utf-8") as f:
-        for row in csv.DictReader(f):
-            n += 1
-            fol = row["follows"]
-            raw[fol] += 1
-            if fol == "neither":
-                resc[score_by_reasoning(row["prediction"],
-                                        row["image_question"],
-                                        row["text_question"])] += 1
-            else:
-                resc[fol] += 1
+        rows = list(csv.DictReader(f))
+    n = len(rows)
+    corrupt = (channel == "text" and level is not None
+               and TEXT_NOISE_LEVELS.get(level, {}).get("p", 0) > 0)
+    for row in rows:
+        fol = row["follows"]
+        raw[fol] += 1
+        if fol == "neither":
+            text_q = row["text_question"]
+            if corrupt:  # reconstruct the corrupted text the model actually read
+                seed = (int(row["problem_id"]) + 1) % n
+                text_q = degrade_text(text_q, level, seed=seed)
+            resc[score_by_reasoning(row["prediction"],
+                                    row["image_question"],
+                                    text_q)] += 1
+        else:
+            resc[fol] += 1
 
     raw_img, raw_txt = raw.get("image", 0), raw.get("text", 0)
     raw_dec = raw_img + raw_txt
@@ -322,18 +340,23 @@ def rescore_level_from_csv(csv_path):
         "decidable": r_dec,
         "text_preference": (r_txt / r_dec) if r_dec else None,
         "neither_rate": (resc.get("neither", 0) / n) if n else None,
+        "rescore_channel": channel,  # provenance: "text" => corrupted-text-aware rescore
     }
 
 
-def rescore_model(out_dir, model_key):
-    """Rescore every level CSV for a model; write a rescored per-model summary."""
+def rescore_model(out_dir, model_key, channel="image"):
+    """Rescore every level CSV for a model; write a rescored per-model summary.
+
+    channel is forwarded to rescore_level_from_csv so the text channel (Phase 7)
+    reconstructs the corrupted text the model saw before reasoning-trace matching.
+    """
     levels = {}
     for fn in sorted(os.listdir(out_dir)):
         m = re.match(r"level_(\d+)_(.+)\.csv$", fn)
         if not m:
             continue
         L, name = int(m.group(1)), m.group(2)
-        res = rescore_level_from_csv(os.path.join(out_dir, fn))
+        res = rescore_level_from_csv(os.path.join(out_dir, fn), channel=channel, level=L)
         res["level"], res["name"] = L, name
         levels[L] = res
         _atomic_write_json(os.path.join(out_dir, f"level_{L}_{name}_rescored.json"), res)
@@ -555,7 +578,7 @@ def main():
         for model_key in args.models:
             out_dir = os.path.join(out_root, model_key)
             if os.path.isdir(out_dir):
-                all_summaries[model_key] = rescore_model(out_dir, model_key)
+                all_summaries[model_key] = rescore_model(out_dir, model_key, channel=args.channel)
             else:
                 print(f"  {model_key}: no results dir — skipping")
         _atomic_write_json(os.path.join(out_root, "legibility_all_rescored.json"), all_summaries)
