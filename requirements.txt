@@ -16,3 +16,4 @@ huggingface_hub
 torchvision
 openai  # frontier API models (GPT-*) via VLMModel type="openai"
 google-genai  # frontier API models (Gemini-*) via VLMModel type="gemini"
+pytesseract  # OCR char-survival legibility axis (needs the `tesseract` binary); phase_control only
