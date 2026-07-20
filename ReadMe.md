@@ -23,10 +23,10 @@ preference under conflict rather than inferring it from accuracy differences.
 | **2 — Error analysis** | Disagreement + difficulty correlates, 8 models | Complete |
 | **3 — Multi-benchmark** | SVAMP, MATH-500, AQuA-RAT (Protocol A) + MathVista, AI2D, ChartQA, ScienceQA (Protocol B) | 7/8 models complete |
 | **4 — Noise ablation** | Rendered-image robustness across 10 corruption levels | 4-model contrast (resilient vs vulnerable) |
-| **5 — Prompt sensitivity** | Can prompting shift modality preference? | In progress |
+| **5 — Prompt sensitivity** | Can prompting shift modality preference? | **Dropped from paper** (unrun; deferred to future work) |
 | **6 — Legibility (image arm)** | Modality preference under **image** degradation (mismatch × noise): does text preference track legibility, or is it a fixed prior? Behavioral preference **+ conditional-log-likelihood (CLL) arbitration margin** — a ceiling-free graded measure (6 open models) — **+ frontier binary** (GPT-5.6-Luna). Noise applied to the **canonical HF renders** (Level 0 = the main-experiment image). | GSM8K complete; SVAMP CLL + frontier in progress |
-| **7 — Mirror arm (text degradation)** | Symmetric counterpart: hold the **image** clean, degrade the **text**, measure the trust shift. Behavioral preference **+ CLL arbitration margin** (`--score-cll --channel text`) — a true mirror of the Phase 6 arm. With Phase 6 this is a psychophysics-style test of whether VLMs are **reliability-weighted observers** (`src/text_noise.py`, `run_legibility.py --channel text`, `scripts/gaivi_run_text_legibility_parallel.sh`) | Runner + CLL wired; smoke-test then full grid |
-| **8 — Mechanistic (attention × legibility)** | Mean text→image attention vs. corruption level — a *ceiling-free* complement to Phases 6–7 (Qwen family; extends Hua et al.'s router heads onto the reliability axis) | Planned |
+| **7 — Mirror arm (text degradation)** | Symmetric counterpart: hold the **image** clean, degrade the **text**, measure the trust shift. Behavioral preference **+ CLL arbitration margin** (`--score-cll --channel text`) — a true mirror of the Phase 6 arm. With Phase 6 this is a psychophysics-style test of whether VLMs are **reliability-weighted observers** (`src/text_noise.py`, `run_legibility.py --channel text`, `scripts/gaivi_run_text_legibility_parallel.sh`) | Complete (run + rescored channel-aware; see `docs/PHASE7_RESCORE.md`) |
+| **8 — Mechanistic (attention × legibility)** | Mean text→image attention vs. corruption level — a *ceiling-free* complement to Phases 6–7 (Qwen family; extends Hua et al.'s router heads onto the reliability axis) | **Dropped from paper** (never run; CLL margin supersedes its ceiling-free role) |
 
 **Target venue:** EACL 2027 (ARR, Aug 3 2026) — Findings the realistic landing,
 main track the stretch. Framed as a **psychophysics-style test of reliability-weighted
@@ -38,8 +38,8 @@ image legibility — a conditional-log-likelihood analysis (scale-validated, 0.8
 over n=15,257) shows only **1 of 6** open models robustly down-weights the degraded image
 in probability space — i.e. a **fixed, redundancy-driven prior, not a reliability-weighted
 observer** (with Qwen2.5-VL-7B the notable exception). Differentiated from prior conflict
-work that degrades the *text* (Deng et al.) or varies *difficulty* (Pezeshkpour et al.);
-Phase 8 adds the mechanistic account. Related work (conflict: Hua et al., Nguyen et al.;
+work that degrades the *text* (Deng et al.) or varies *difficulty* (Pezeshkpour et al.).
+Related work (conflict: Hua et al., Nguyen et al.;
 image-degradation reliance: "Diagnosing Visual Ignorance"; robustness: VLM-RobustBench,
 Common Corruptions) is cited and differentiated.
 
@@ -91,7 +91,8 @@ results/
 ├── phase6_legibility/[<benchmark>/]<model>/  # image-arm preference; per-level CSV/JSON,
 │                                             #   level_*.cll.jsonl (CLL margins), rescore/,
 │                                             #   *.logprobs.jsonl (API models). gsm8k at root.
-└── phase8_attention/[<benchmark>/]<model>/   # text→image attention vs legibility (Qwen family)
+├── phase7_text_legibility/<benchmark>/<model>/  # mirror arm: text-degradation preference (+ CLL, rescored)
+└── phase_control/{survival,visual_reliance}/<benchmark>/  # robustness controls (see phase_control/README)
 docs/                 # CANONICAL.md (architecture), dataset specs, onboarding
 vlm_benchmark/        # legacy symposium-pilot package (kept for reproducibility)
 ```

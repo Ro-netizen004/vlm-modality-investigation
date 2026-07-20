@@ -73,9 +73,11 @@ Aligned `text_and_image` exists only in `vlm_benchmark/experiments/runner.py` �
 
 **Phase map (canonical numbering — keep consistent with `ReadMe.md`):**
 1 GSM8K · 2 Error analysis · 3 Multi-benchmark · 4 Noise ablation ·
-5 Prompt sensitivity · 6 Legibility image arm (`scripts/run_legibility.py`; `--score-cll` = CLL margin) ·
-7 Mirror arm — text degradation (`src/text_noise.py` + `run_legibility.py --channel text`; built, runs pending) ·
-8 Mechanistic attention × legibility (`scripts/run_attention_legibility.py`, Qwen family).
+5 Prompt sensitivity — **DROPPED from paper** (unrun stub; deferred to future work — the steerability question survives in the Conclusion. `Prompt_Sensitivity.ipynb` retained but not part of the current paper) ·
+6 Legibility image arm (`scripts/run_legibility.py`; `--score-cll` = CLL margin) ·
+7 Mirror arm — text degradation (`src/text_noise.py` + `run_legibility.py --channel text`; **run + rescored channel-aware** — see `docs/PHASE7_RESCORE.md`) ·
+8 Mechanistic attention × legibility — **DROPPED from paper** (never run; the CLL margin supersedes its ceiling-cracking role. `scripts/run_attention_legibility.py` + `Mechanistic_Analysis.ipynb` retained but unused).
+Control (robustness, not a numbered phase): visual-reliance probe + matched-legibility β3 test in `results/phase_control/` — see its README.
 
 ## Reproducibility checklist (new runs)
 
