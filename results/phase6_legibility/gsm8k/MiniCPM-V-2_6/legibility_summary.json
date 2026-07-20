@@ -1,0 +1,13 @@
+{
+  "model": "MiniCPM-V-2_6",
+  "n": 1319,
+  "levels_complete": [
+    0
+  ],
+  "text_preference_by_level": {
+    "0": 0.5
+  },
+  "neither_rate_by_level": {
+    "0": 0.9825625473843821
+  }
+}

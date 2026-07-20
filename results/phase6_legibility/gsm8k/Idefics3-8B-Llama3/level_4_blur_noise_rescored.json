@@ -1,0 +1,26 @@
+{
+  "n_problems": 1319,
+  "counts_raw": {
+    "text": 466,
+    "neither": 833,
+    "image": 4,
+    "ambiguous": 15,
+    "invalid": 1
+  },
+  "decidable_raw": 470,
+  "text_preference_raw": 0.9914893617021276,
+  "counts_rescored": {
+    "text": 466,
+    "text_reasoning": 737,
+    "neither": 84,
+    "image": 4,
+    "ambiguous": 15,
+    "image_reasoning": 12,
+    "invalid": 1
+  },
+  "decidable": 1219,
+  "text_preference": 0.9868744872846595,
+  "neither_rate": 0.06368460955269144,
+  "level": 4,
+  "name": "blur_noise"
+}

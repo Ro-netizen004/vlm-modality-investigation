@@ -1,0 +1,13 @@
+{
+  "model": "Idefics3-8B-Llama3",
+  "n": 300,
+  "levels_complete": [
+    0
+  ],
+  "text_preference_by_level": {
+    "0": 0.9879518072289156
+  },
+  "neither_rate_by_level": {
+    "0": 0.43666666666666665
+  }
+}

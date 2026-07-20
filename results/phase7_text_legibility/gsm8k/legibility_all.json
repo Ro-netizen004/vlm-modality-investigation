@@ -1,0 +1,37 @@
+{
+  "Idefics3-8B-Llama3": {
+    "model": "Idefics3-8B-Llama3",
+    "n": 300,
+    "levels_complete": [
+      0
+    ],
+    "text_preference_by_level": {
+      "0": 0.9879518072289156
+    },
+    "neither_rate_by_level": {
+      "0": 0.43666666666666665
+    }
+  },
+  "Qwen2-VL-2B-Instruct": {
+    "model": "Qwen2-VL-2B-Instruct",
+    "n": 300,
+    "levels_complete": [
+      0,
+      2,
+      4,
+      5
+    ],
+    "text_preference_by_level": {
+      "0": 0.9772727272727273,
+      "2": 0.9310344827586207,
+      "4": 0.7037037037037037,
+      "5": 0.04285714285714286
+    },
+    "neither_rate_by_level": {
+      "0": 0.55,
+      "2": 0.7966666666666666,
+      "4": 0.9,
+      "5": 0.7366666666666667
+    }
+  }
+}

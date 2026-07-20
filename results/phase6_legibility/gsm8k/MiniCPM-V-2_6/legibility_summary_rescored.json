@@ -1,0 +1,15 @@
+{
+  "model": "MiniCPM-V-2_6",
+  "text_preference_by_level": {
+    "0": 0.5018796992481203
+  },
+  "text_preference_raw_by_level": {
+    "0": 0.5
+  },
+  "decidable_by_level": {
+    "0": 532
+  },
+  "decidable_raw_by_level": {
+    "0": 8
+  }
+}

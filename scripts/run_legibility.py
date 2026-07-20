@@ -542,7 +542,7 @@ def main():
             else:
                 print(f"  {model_key}: no results dir — skipping")
         _atomic_write_json(os.path.join(out_root, "legibility_all.json"), all_summaries)
-        print(f"\nMerge complete → {out_root}/legibility_all.json")
+        print(f"\nMerge complete -> {out_root}/legibility_all.json")
         return
 
     # ── Rescore-only mode: reclassify 'neither' via reasoning trace from the CSVs ──
@@ -555,7 +555,7 @@ def main():
             else:
                 print(f"  {model_key}: no results dir — skipping")
         _atomic_write_json(os.path.join(out_root, "legibility_all_rescored.json"), all_summaries)
-        print(f"\nRescore complete → {out_root}/legibility_all_rescored.json")
+        print(f"\nRescore complete -> {out_root}/legibility_all_rescored.json")
         return
 
     # Load the CANONICAL HF renders (use_hf=True) so noise is applied on top of the
@@ -586,7 +586,7 @@ def main():
     if not have_images:
         os.makedirs(image_dir, exist_ok=True)
         if all(img is not None for img in images):
-            print(f"Applying noise to canonical HF images → {image_dir} ...")
+            print(f"Applying noise to canonical HF images -> {image_dir} ...")
             apply_noise_to_images(images, image_dir,
                                   noise_levels=prep_levels, texts=questions)
         else:

@@ -1,0 +1,20 @@
+{
+  "n_problems": 300,
+  "counts_raw": {
+    "text": 254,
+    "neither": 42,
+    "ambiguous": 4
+  },
+  "decidable_raw": 254,
+  "text_preference_raw": 1.0,
+  "counts_rescored": {
+    "text": 254,
+    "text_reasoning": 42,
+    "ambiguous": 4
+  },
+  "decidable": 296,
+  "text_preference": 1.0,
+  "neither_rate": 0.0,
+  "level": 4,
+  "name": "blur_noise"
+}

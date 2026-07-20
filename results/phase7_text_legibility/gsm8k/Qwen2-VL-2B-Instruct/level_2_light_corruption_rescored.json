@@ -1,0 +1,24 @@
+{
+  "n_problems": 300,
+  "counts_raw": {
+    "text": 54,
+    "neither": 239,
+    "ambiguous": 3,
+    "image": 4
+  },
+  "decidable_raw": 58,
+  "text_preference_raw": 0.9310344827586207,
+  "counts_rescored": {
+    "text": 54,
+    "text_reasoning": 226,
+    "neither": 3,
+    "image_reasoning": 10,
+    "ambiguous": 3,
+    "image": 4
+  },
+  "decidable": 294,
+  "text_preference": 0.9523809523809523,
+  "neither_rate": 0.01,
+  "level": 2,
+  "name": "light_corruption"
+}

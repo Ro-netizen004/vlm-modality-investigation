@@ -55,3 +55,11 @@ paper/
 
 # Generated conflict dataset (large; lives on HF, not git)
 data/conflict_dataset*
+
+# Large per-trial legibility data — kept on Drive/cluster, not git (see results/README.md).
+# Keeps the small JSON summaries + .cll.jsonl margins tracked; excludes the heavy raw files.
+# (phase1/phase3 CSVs are intentionally NOT ignored — policy keeps those committed.)
+results/phase6_legibility/**/*.csv
+results/phase7_text_legibility/**/*.csv
+results/**/*.logprobs.jsonl
+results/**/*.partial.jsonl
