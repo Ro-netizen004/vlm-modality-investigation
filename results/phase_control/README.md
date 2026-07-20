@@ -1,10 +1,16 @@
-# phase_control — matched-legibility control analysis
+# phase_control — control & robustness analyses
 
-A self-contained analysis that answers the reviewer objection to the Phase 6/7 legibility
-asymmetry ("image barely moves arbitration, text collapses it"): **the two corruption
-ladders may not remove equivalent information.** Rather than recalibrate + rerun the whole
-grid to matched severity (expensive), we **measure** each channel's information loss two
-independent ways and test whether a modality effect survives after controlling for it.
+Self-contained analyses that answer the two most dangerous reviewer objections to the
+Phase 6/7 legibility asymmetry, without re-running the main grid.
+
+**(A) Matched-legibility control** — "the two corruption ladders may not remove equivalent
+information, so the 6-vs-2 asymmetry could be a severity artifact." We **measure** each
+channel's information loss two independent ways and test whether a modality effect survives
+after controlling for it (`measure_legibility_*` + `analyze_legibility_control.py`).
+
+**(B) Visual-reliance probe** — "rendered text ≠ real visual reasoning; your image findings
+may be about OCR, not vision." We test the *same* reliability question on genuinely visual
+content (charts/diagrams) (`measure_visual_reliance.py`). See the section near the bottom.
 
 ## Two legibility axes (triangulation)
 
@@ -68,18 +74,58 @@ done
 **survival** (CPU, model-independent). Use an ISOLATED conda env so the tesseract install
 never perturbs the `vlm` env your running/queued jobs depend on:
 ```bash
-conda create -y -n ocr -c conda-forge python=3.11 tesseract pillow numpy
-conda activate ocr && pip install pytesseract datasets tqdm
+# NB: let pip provide numpy — conda-forge numpy is built for x86-64-v2 and FAILS to import
+# on the older gaivi-login1 CPU ("baseline optimizations (X86_V2)..."). pip wheels use the
+# generic baseline and run on the login node.
+conda create -y -n ocr -c conda-forge python=3.11 tesseract pillow
+conda activate ocr && pip install pytesseract datasets tqdm numpy
 export HF_HOME=/data/rg21/hf_cache
 python scripts/measure_legibility_survival.py --benchmark svamp --num-problems 300
 python scripts/measure_legibility_survival.py --benchmark gsm8k --num-problems 1319
 conda deactivate   # (conda env remove -n ocr when done)
 ```
 Do **not** `conda install tesseract` into `vlm` while the grid is queued — it can bump shared
-packages and every pending job would inherit the change.
+packages and every pending job would inherit the change. If numpy still errors on the login
+node, run the survival pass on a compute node: `srun -p Quick,CISL -c 4 --mem=16G -t 00:30:00 --pty bash`.
 
 ## The control test (interaction regression for each available axis)
 ```bash
 python scripts/analyze_legibility_control.py --benchmark svamp --metric cll
 python scripts/analyze_legibility_control.py --benchmark gsm8k --metric cll
 ```
+
+---
+
+# (B) Visual-reliance probe — `scripts/measure_visual_reliance.py`
+
+Answers the ecological-validity objection: *rendered text ≠ real visual reasoning; the image
+findings may be about OCR, not vision.* We run the **same reliability question on genuinely
+visual content** (charts/diagrams). No conflict construction needed.
+
+On a vision-essential benchmark (ChartQA / AI2D), present image+question at each image
+degradation level (0/2/4/5) and measure per level:
+- **accuracy(L)** — falls if the image is essential and being read
+- **confidence(L)** — mean generated-token logprob; a reliability-aware model loses confidence as accuracy drops
+- **invariance(L)** — fraction of answers unchanged from L0 (high under heavy blur ⇒ the model ignores the degraded image)
+
+**Read-out (matches the rendered-text finding if):** accuracy collapses while confidence stays
+flat and/or answers stay invariant ⇒ the model keeps confidently answering a chart it can no
+longer read ⇒ reliability insensitivity **generalizes beyond OCR**. If instead confidence /
+answer-change track the accuracy drop, models *are* reliability-aware for pictorial content
+and the rendered-text result is OCR-specific — either way, an honest, publishable answer.
+
+**ChartQA is the strongest choice** (text-only accuracy ≈ 0, so the image is maximally essential).
+
+```bash
+# GPU, per model (queues behind the grid); MiniCPM excluded (version-broken)
+for BM in chartqa ai2d; do
+  for M in Qwen2.5-VL-7B-Instruct InternVL2-8B Idefics3-8B-Llama3 Phi-3.5-vision-instruct \
+           Qwen2-VL-2B-Instruct llava-onevision-qwen2-7b-ov-hf llava-v1.6-mistral-7b-hf; do
+    sbatch -p Quick,CISL --gpus=1 -c 8 --mem=64G -t 04:00:00 \
+      -o logs/visrel_${BM}_${M}_%j.log \
+      --wrap="source ~/.bashrc; conda activate vlm; export HF_HOME=/data/rg21/hf_cache; cd ~/vlm-modality-investigation && python scripts/measure_visual_reliance.py --models ${M} --benchmark ${BM} --num-problems 300"
+  done
+done
+```
+Writes `results/phase_control/visual_reliance/<bm>/`; the script prints a per-model
+`acc L0->L5 | conf | invariance@L5` trajectory read.
