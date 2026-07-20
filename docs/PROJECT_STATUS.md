@@ -43,8 +43,14 @@ trajectory via logprobs, NOT a CLL margin).
 **phase_control (robustness):** `survival` axis (OCR/CER) done for gsm8k+svamp; `decodability`
 (task-acc) and `visual_reliance` **not run yet**.
 
-**Known-missing / TODO:** InternVL2 text arm (running); MiniCPM everywhere (version-broken);
+**Known-missing / TODO:** InternVL2 text arm (running);
 SVAMP-image CLL follows/reasoning join (recoverable once the binary CSVs land).
+
+**Not a TODO — documented paper exclusion:** MiniCPM in the legibility arms (version-broken;
+L0 baseline only). No longer an open item — it's footnoted in the legibility methods
+(`paper/main.tex`, §Legibility): omitted from the per-model trajectories and `tab:mirror_cll`;
+it's binary-only so it never entered the CLL analysis regardless. Do not re-queue it expecting
+Phase 6/7 data unless the loader break (see §5) is fixed first.
 
 ---
 
@@ -115,6 +121,8 @@ run it from Git Bash. After pulling, run `python scripts/build_legibility_all.py
   works at 4.49.0 but MiniCPM still fails → root cause likely its unpinned `trust_remote_code`
   remote code, not just the lib version. **Excluded from all legibility runs; weights removed to
   free quota.** Same loader (`src/models.py` `_load_minicpm`) across phases — not a code diff.
+  **Documented in the paper** as a legibility-arm exclusion (footnote in §Legibility methods);
+  binary-only, so it never entered the CLL analysis. Treat as settled, not outstanding.
 - **`/data/rg21` per-user quota ≈ 100 GB, all model weights** (`hf_cache/hub`). Can't hold all 8
   VLMs (~15 GB each) at once → `OSError [Errno 122] Disk quota exceeded` on dataset load. Prune
   models between runs: `rm -rf /data/rg21/hf_cache/hub/models--<org>--<name>`. Check: `du -sh /data/rg21`.
