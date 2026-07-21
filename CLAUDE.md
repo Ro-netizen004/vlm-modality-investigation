@@ -79,6 +79,11 @@ Aligned `text_and_image` exists only in `vlm_benchmark/experiments/runner.py` �
 8 Mechanistic attention × legibility — **DROPPED from paper** (never run; the CLL margin supersedes its ceiling-cracking role. `scripts/run_attention_legibility.py` + `Mechanistic_Analysis.ipynb` retained but unused).
 Control (robustness, not a numbered phase): visual-reliance probe + matched-legibility β3 test in `results/phase_control/` — see its README.
 
+Prompt-role control: `scripts/run_legibility.py --prompt-role neutral` repeats both
+legibility arms with neither modality designated as the task. Runs write a configuration
+fingerprint and refuse incompatible resumes; compare original and neutral CLL asymmetry
+with `scripts/analyze_role_control.py`.
+
 ## Reproducibility checklist (new runs)
 
 - Pin `transformers` / `torch` in `requirements.txt` when changing env  

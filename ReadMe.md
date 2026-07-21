@@ -190,3 +190,9 @@ Anshuman Chhabra, Ocean Monjur, and Shrestha Datta for their mentorship during
 that phase. The current full-scale study is carried out in the Computing
 Intelligence and Security Lab (CISL) at USF; we thank Prof. Guangjing Wang for
 providing GPU resources on the GAIVI cluster.
+### Neutral prompt-role control
+
+Use `scripts/run_legibility.py --prompt-role neutral` to test whether the degradation-arm
+asymmetry survives when neither text nor image is designated as the task. Run both channels
+on identical items, then use `scripts/analyze_role_control.py` for the paired comparison.
+Each run records a configuration fingerprint and rejects incompatible checkpoint reuse.

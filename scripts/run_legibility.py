@@ -29,6 +29,7 @@ Usage:
 """
 
 import argparse
+import hashlib
 import json
 import os
 import re
@@ -55,6 +56,7 @@ from src.benchmarks import load_benchmark
 # a trial to image/text by numeric match. AQuA-RAT is multiple-choice (letter
 # answers) so it's excluded — its conflict attribution would be unreliable.
 TEXT_MATH_BENCHMARKS = ["gsm8k", "svamp", "math"]
+PROMPT_CONFIG_VERSION = "role-control-v1"
 
 # Same registry/types as the noise runner — must match configs/default.yaml.
 MODEL_REGISTRY = {
@@ -108,6 +110,39 @@ def _atomic_write_json(path, obj):
     with open(tmp, "w") as f:
         json.dump(obj, f, indent=2)
     os.replace(tmp, path)
+
+
+def _experiment_config(model_key, channel, role, questions, references):
+    """Configuration fingerprint used to reject incompatible resumptions."""
+    payload = json.dumps(
+        {"questions": questions, "references": references},
+        ensure_ascii=False, separators=(",", ":"),
+    ).encode("utf-8")
+    return {
+        "schema_version": 1,
+        "prompt_config_version": PROMPT_CONFIG_VERSION,
+        "model": model_key,
+        "channel": channel,
+        "prompt_role": role,
+        "n_problems": len(questions),
+        "dataset_sha256": hashlib.sha256(payload).hexdigest(),
+    }
+
+
+def _ensure_experiment_config(out_dir, config):
+    """Write provenance once; refuse to reuse a directory for another config."""
+    path = os.path.join(out_dir, "experiment_config.json")
+    if os.path.exists(path):
+        with open(path, encoding="utf-8") as f:
+            existing = json.load(f)
+        if existing != config:
+            raise RuntimeError(
+                f"Incompatible existing run configuration in {path}. "
+                "Use a fresh output directory rather than resuming mixed artifacts."
+            )
+    else:
+        _atomic_write_json(path, config)
+    return config
 
 
 def _summarize(follows, n):
@@ -173,7 +208,7 @@ def _clear_stale_partial(partial_path, n):
 
 
 def run_level(vlm, level, questions, references, image_dir, n, out_dir, channel="image",
-              role="text_task"):
+              role="text_task", config=None):
     """Run the mismatch condition for all problems at one degradation level.
 
     channel="image": degrade the image at `level`, text clean (Phase 6).
@@ -247,9 +282,13 @@ def run_level(vlm, level, questions, references, image_dir, n, out_dir, channel=
     # Save per-problem predictions (Phase-1 style) so the reasoning rescore can run
     # post-hoc without re-running the model.
     _write_level_csv(os.path.join(out_dir, f"level_{level}_{name}.csv"),
-                     n, questions, references, preds, follows)
+                     n, questions, references, preds, follows, role)
 
-    res = {"level": level, "name": name, **_summarize(follows, n)}  # includes n_problems
+    res = {"level": level, "name": name, "prompt_role": role,
+           "prompt_config_version": PROMPT_CONFIG_VERSION,
+           **_summarize(follows, n)}  # includes n_problems
+    if config:
+        res["dataset_sha256"] = config["dataset_sha256"]
     _atomic_write_json(final_path, res)
     try:
         os.remove(partial_path)  # checkpoint no longer needed once level is final
@@ -258,17 +297,18 @@ def run_level(vlm, level, questions, references, image_dir, n, out_dir, channel=
     return res
 
 
-def _write_level_csv(csv_path, n, questions, references, preds, follows):
+def _write_level_csv(csv_path, n, questions, references, preds, follows, role="text_task"):
     """One row per mismatch trial: image/text problems, the prediction, raw label."""
     tmp = f"{csv_path}.tmp.{os.getpid()}"
     with open(tmp, "w", newline="", encoding="utf-8") as f:
         w = csv.writer(f)
         w.writerow(["problem_id", "image_question", "text_question",
-                    "image_reference", "text_reference", "prediction", "follows"])
+                    "image_reference", "text_reference", "prediction", "follows",
+                    "prompt_role"])
         for i in range(n):
             txt_idx = (i + 1) % n
             w.writerow([i, questions[i], questions[txt_idx],
-                        references[i], references[txt_idx], preds[i], follows[i]])
+                        references[i], references[txt_idx], preds[i], follows[i], role])
     os.replace(tmp, csv_path)
 
 
@@ -297,6 +337,10 @@ def rebuild_model_summary(out_dir, model_key, n):
         "text_preference_by_level": {L: levels_found[L]["text_preference"] for L in ordered},
         "neither_rate_by_level": {L: levels_found[L]["neither_rate"] for L in ordered},
     }
+    config_path = os.path.join(out_dir, "experiment_config.json")
+    if os.path.exists(config_path):
+        with open(config_path, encoding="utf-8") as f:
+            summary["experiment_config"] = json.load(f)
     _atomic_write_json(os.path.join(out_dir, "legibility_summary.json"), summary)
 
     tps = [levels_found[L]["text_preference"] for L in ordered
@@ -400,6 +444,9 @@ def run_model(model_key, questions, references, image_dir, n, levels, out_root, 
     mc = MODEL_REGISTRY[model_key]
     out_dir = os.path.join(out_root, model_key)
     os.makedirs(out_dir, exist_ok=True)
+    config = _ensure_experiment_config(
+        out_dir, _experiment_config(model_key, channel, role, questions, references)
+    )
     level_name = (lambda L: TEXT_NOISE_LEVELS[L]["name"]) if channel == "text" \
         else (lambda L: NOISE_LEVELS[L]["name"])
 
@@ -418,7 +465,7 @@ def run_model(model_key, questions, references, image_dir, n, levels, out_root, 
 
     for level in levels:  # run_level self-skips any already-final level
         res = run_level(vlm, level, questions, references, image_dir, n, out_dir,
-                        channel=channel, role=role)
+                        channel=channel, role=role, config=config)
         tp = res["text_preference"]
         if tp is not None:
             print(f"  L{level} {res['name']:18s}: text_pref={tp:.3f}  "
@@ -437,7 +484,7 @@ CLL_TYPES = {"qwen", "llava", "llava_onevision", "phi", "idefics"}
 
 
 def run_cll_level(vlm, level, questions, references, image_dir, n, out_dir, channel="image",
-                  role="text_task"):
+                  role="text_task", config=None):
     """Per mismatch trial, compute the arbitration margin CLL(text) - CLL(image), and JOIN
     the reasoning label from the generation CSV so the downstream stratified analysis is
     ready. Writes/append level_X.cll.jsonl (resumable).
@@ -490,13 +537,21 @@ def run_cll_level(vlm, level, questions, references, image_dir, n, out_dir, chan
                     text_question=text_q, role=role, item_idx=i)
             except Exception as e:
                 m = None
-            rec = {"i": i, "level": level, "margin": m}
+            rec = {"i": i, "level": level, "margin": m,
+                   "prompt_role": role,
+                   "prompt_config_version": PROMPT_CONFIG_VERSION}
+            if config:
+                rec["dataset_sha256"] = config["dataset_sha256"]
             row = gen.get(i)
             if row is not None:
                 rec["follows"] = row.get("follows")
+                reasoning_text = row.get("text_question", "")
+                if channel == "text" and TEXT_NOISE_LEVELS[level]["p"] > 0:
+                    reasoning_text = degrade_text(reasoning_text, level,
+                                                  seed=(i + 1) % n)
                 rec["reasoning"] = score_by_reasoning(
                     row.get("prediction", ""), row.get("image_question", ""),
-                    row.get("text_question", ""))
+                    reasoning_text)
             out.write(json.dumps(rec) + "\n")
             out.flush()
     return cll_path
@@ -512,13 +567,16 @@ def run_cll_model(model_key, questions, references, image_dir, n, levels, out_ro
         return
     out_dir = os.path.join(out_root, model_key)
     os.makedirs(out_dir, exist_ok=True)
+    config = _ensure_experiment_config(
+        out_dir, _experiment_config(model_key, channel, role, questions, references)
+    )
     print(f"\n{'='*60}\n  CLL scoring: {model_key}  (channel={channel}, levels {levels})\n{'='*60}")
     vlm = VLMModel(model_name=mc["name"], model_type=mc["type"],
                    max_new_tokens=256, torch_dtype="bfloat16")
     vlm.load()
     for level in levels:
         run_cll_level(vlm, level, questions, references, image_dir, n, out_dir,
-                      channel=channel, role=role)
+                      channel=channel, role=role, config=config)
     vlm.unload()
 
 

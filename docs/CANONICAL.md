@@ -128,3 +128,11 @@ vlm_research_results/          # Google Drive
 - [x] HF v2 dataset — [vlm-modality-research/gsm8k-rendered-vlm-v2](https://huggingface.co/datasets/vlm-modality-research/gsm8k-rendered-vlm-v2)  
 - [x] HF dataset README — published on Hub  
 - [x] Phase 3 datasets — SVAMP, AQuA-RAT, MATH-500 uploaded to HF org  
+## Prompt-role control
+
+The canonical role-framing control uses `scripts/run_legibility.py --prompt-role neutral`
+for both image- and text-degradation arms. The neutral scaffold names both inputs as
+sources and counterbalances their A/B labels. Per-model output directories contain
+`experiment_config.json`; the runner refuses to mix a different model, channel, prompt
+version, sample size, or dataset fingerprint into an existing directory. Analyze the
+matched original-versus-neutral CLL contrast with `scripts/analyze_role_control.py`.
