@@ -123,10 +123,29 @@ def main():
     ap.add_argument("--num-problems", type=int, default=300)
     ap.add_argument("--levels", nargs="+", type=int, default=DEFAULT_LEVELS)
     ap.add_argument("--output-dir", default="results/phase_control/visual_reliance")
+    ap.add_argument("--merge-only", action="store_true",
+                    help="rebuild visual_reliance_all.json from existing model JSONs")
     args = ap.parse_args()
 
     out_dir = os.path.join(args.output_dir, args.benchmark)
     os.makedirs(out_dir, exist_ok=True)
+    if args.merge_only:
+        all_res = {}
+        for fn in sorted(os.listdir(out_dir)):
+            if not fn.endswith(".json") or fn == "visual_reliance_all.json":
+                continue
+            try:
+                with open(os.path.join(out_dir, fn)) as f:
+                    result = json.load(f)
+            except (OSError, json.JSONDecodeError):
+                continue
+            model = result.get("model")
+            if model and result.get("levels"):
+                all_res[model] = result
+        with open(os.path.join(out_dir, "visual_reliance_all.json"), "w") as f:
+            json.dump(dict(sorted(all_res.items())), f, indent=2)
+        print(f"Wrote {out_dir}/visual_reliance_all.json ({len(all_res)} models)")
+        return
     items = [it for it in load_benchmark(args.benchmark, args.num_problems, use_hf=True)
              if getattr(it, "image", None) is not None]
     if not items:
@@ -148,8 +167,21 @@ def main():
             print(f"  {mk}: acc {a0:.3f}->{aL:.3f} (drop {a0-aL:+.3f}) | "
                   f"conf {c0}->{cL} | invariance@L{Ls[-1]}={lv[Ls[-1]]['answer_invariance_vs_L0']:.2f}")
 
+    # Preserve and collate every completed per-model result in the directory.
+    # A targeted --models run must not replace the aggregate with only that subset.
+    for fn in sorted(os.listdir(out_dir)):
+        if not fn.endswith(".json") or fn == "visual_reliance_all.json":
+            continue
+        try:
+            with open(os.path.join(out_dir, fn)) as f:
+                result = json.load(f)
+        except (OSError, json.JSONDecodeError):
+            continue
+        model = result.get("model")
+        if model and result.get("levels"):
+            all_res[model] = result
     with open(os.path.join(out_dir, "visual_reliance_all.json"), "w") as f:
-        json.dump(all_res, f, indent=2)
+        json.dump(dict(sorted(all_res.items())), f, indent=2)
     print(f"\nWrote {out_dir}/visual_reliance_all.json")
     print("Read-out: accuracy collapses while confidence stays flat / invariance stays high"
           "\n         => reliability-INSENSITIVITY on genuinely visual content (finding generalizes).")

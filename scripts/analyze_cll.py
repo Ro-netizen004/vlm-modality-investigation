@@ -101,17 +101,16 @@ for m in models:
 # ── 5. TRAJECTORY SIGNIFICANCE: does the margin shift with legibility? ──────────
 from scipy import stats
 print("\n" + "="*72)
-print("5. TRAJECTORY SIGNIFICANCE  — MWU: L0 vs L5 margin;  Spearman(margin, level)")
+print("5. PAIRED ENDPOINT SIGNIFICANCE -- Wilcoxon signed-rank: L0 vs L5")
 print("="*72)
 for m in models:
-    per_level = {L: [r["margin"]["margin_mean"] for r in load(m, L)] for L, _ in LEVELS}
-    l0, l5 = per_level[0], per_level[5]
-    u, pu = stats.mannwhitneyu(l5, l0, alternative="two-sided")
-    dmed = st.median(l5) - st.median(l0)
-    xs, ys = [], []
-    for L, _ in LEVELS:
-        xs += [L] * len(per_level[L]); ys += per_level[L]
-    rho, prho = stats.spearmanr(xs, ys)
-    rises = dmed > 0 and pu < 0.05 and rho > 0 and prho < 0.05
-    flag = "RISES (ceiling-cracked)" if rises else ("flat" if pu >= 0.05 else "shifts(non-monotone)")
-    print(f"  {m:32s} d_med={dmed:+.3f}  MWU p={pu:.1e}  Spearman rho={rho:+.3f} (p={prho:.1e})  [{flag}]")
+    l0 = {int(r["i"]): r["margin"]["margin_mean"] for r in load(m, 0)}
+    l5 = {int(r["i"]): r["margin"]["margin_mean"] for r in load(m, 5)}
+    ids = sorted(l0.keys() & l5.keys())
+    diffs = [l5[i] - l0[i] for i in ids]
+    _, p_w = stats.wilcoxon(diffs, alternative="two-sided", zero_method="wilcox")
+    dmed = st.median(diffs)
+    flag = "RISES (ceiling-cracked)" if dmed > 0 and p_w < 0.05 else \
+           ("flat" if p_w >= 0.05 else "FALLS")
+    print(f"  {m:32s} n={len(ids):4d} paired_d_med={dmed:+.3f}  "
+          f"Wilcoxon p={p_w:.1e}  [{flag}]")

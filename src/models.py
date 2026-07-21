@@ -63,6 +63,27 @@ DIRECT_MISMATCH_PROMPT = (
     "Problem: {q}"
 )
 
+# Role-counterbalancing control. The default prompt above labels the TEXT "Problem:"
+# and never references the image, so it designates the text as the task -- confounding
+# modality preference with instruction-following (degrading the text destroys the task
+# statement; degrading the image only damages an unreferenced attachment). The neutral
+# variant names both channels as interchangeable sources and designates neither, with
+# the A/B assignment counterbalanced per item so source order cannot drive the result.
+NEUTRAL_MISMATCH_PROMPT = (
+    "You are given two sources describing a math problem. "
+    "Source {img} is the attached image. Source {txt} is the text below.\n\n"
+    "Source {txt}: {q}\n\n"
+    "Give only the final numeric answer in the form '#### <answer>'."
+)
+
+
+def direct_mismatch_prompt(q, role="text_task", item_idx=0):
+    """Direct-answer mismatch scaffold used for CLL scoring. See NEUTRAL_MISMATCH_PROMPT."""
+    if role == "neutral":
+        img, txt = ("A", "B") if item_idx % 2 == 0 else ("B", "A")
+        return NEUTRAL_MISMATCH_PROMPT.format(img=img, txt=txt, q=q)
+    return DIRECT_MISMATCH_PROMPT.format(q=q)
+
 # Approx API prices ($/1M tokens) as (input, output) for usage-cost reporting.
 # Keyed by the API model id (lowercased). Update when prices change.
 API_PRICES = {
@@ -739,10 +760,16 @@ class VLMModel:
         ctx = self._ctx_for_scoring(DIRECT_MISMATCH_PROMPT.format(q=text_question))
         return self._score_continuation(ctx, image, str(candidate))
 
-    def arbitration_margin(self, image, text_answer, image_answer, text_question):
+    def arbitration_margin(self, image, text_answer, image_answer, text_question,
+                           role="text_task", item_idx=0):
         """margin = CLL(text_answer) - CLL(image_answer), per-token normalized, scored
-        under the mismatch scaffold. Positive = model favors the TEXT answer."""
-        ctx = self._ctx_for_scoring(DIRECT_MISMATCH_PROMPT.format(q=text_question))
+        under the mismatch scaffold. Positive = model favors the TEXT answer.
+
+        role="neutral" swaps in the counterbalanced two-source scaffold so the CLL
+        measure matches the generation-side framing (both must use the same role or
+        the two measures answer different questions).
+        """
+        ctx = self._ctx_for_scoring(direct_mismatch_prompt(text_question, role, item_idx))
         t = self._score_continuation(ctx, image, str(text_answer))
         im = self._score_continuation(ctx, image, str(image_answer))
         if t is None or im is None:

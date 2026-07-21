@@ -81,7 +81,21 @@ DEFAULT_MODELS = ["Idefics3-8B-Llama3", "Qwen2.5-VL-7B-Instruct"]  # vulnerable 
 ALL_MODELS = list(MODEL_REGISTRY.keys())  # full 8-model set for the headline run
 
 
-def mismatch_prompt(text_question):
+def mismatch_prompt(text_question, role="text_task", item_idx=0):
+    """Mismatch scaffold. See src/models.py NEUTRAL_MISMATCH_PROMPT for the rationale.
+
+    role="text_task" (default, original): labels the TEXT "Problem:" and never mentions
+        the image -- the text is designated the task, so modality preference is
+        confounded with instruction-following.
+    role="neutral": names both channels as interchangeable sources and designates
+        neither; the A/B assignment alternates by item so source order is counterbalanced.
+    """
+    if role == "neutral":
+        img, txt = ("A", "B") if item_idx % 2 == 0 else ("B", "A")
+        return (f"You are given two sources describing a math problem. "
+                f"Source {img} is the attached image. Source {txt} is the text below.\n\n"
+                f"Source {txt}: {text_question}\n\n"
+                "Solve the problem step by step. End with '#### <answer>'.")
     return ("Solve the following math problem step by step. "
             "End with '#### <answer>'.\n\n"
             f"Problem: {text_question}")
@@ -158,7 +172,8 @@ def _clear_stale_partial(partial_path, n):
         print(f"  removed stale partial (~n={old_n}, want {n})")
 
 
-def run_level(vlm, level, questions, references, image_dir, n, out_dir, channel="image"):
+def run_level(vlm, level, questions, references, image_dir, n, out_dir, channel="image",
+              role="text_task"):
     """Run the mismatch condition for all problems at one degradation level.
 
     channel="image": degrade the image at `level`, text clean (Phase 6).
@@ -213,7 +228,8 @@ def run_level(vlm, level, questions, references, image_dir, n, out_dir, channel=
                 img = Image.open(img_path).convert("RGB")
                 q = (degrade_text(questions[txt_idx], level, seed=txt_idx)
                      if channel == "text" else questions[txt_idx])
-                pred = vlm.generate_with_image(img, text_prompt=mismatch_prompt(q))
+                pred = vlm.generate_with_image(
+                    img, text_prompt=mismatch_prompt(q, role=role, item_idx=i))
             except Exception as e:
                 pred = f"ERROR: {e}"
             label = score_mismatch_follows(pred, references[i], references[txt_idx])
@@ -379,7 +395,8 @@ def rescore_model(out_dir, model_key, channel="image"):
     return summary
 
 
-def run_model(model_key, questions, references, image_dir, n, levels, out_root, channel="image"):
+def run_model(model_key, questions, references, image_dir, n, levels, out_root, channel="image",
+              role="text_task"):
     mc = MODEL_REGISTRY[model_key]
     out_dir = os.path.join(out_root, model_key)
     os.makedirs(out_dir, exist_ok=True)
@@ -400,7 +417,8 @@ def run_model(model_key, questions, references, image_dir, n, levels, out_root, 
     vlm.load()
 
     for level in levels:  # run_level self-skips any already-final level
-        res = run_level(vlm, level, questions, references, image_dir, n, out_dir, channel=channel)
+        res = run_level(vlm, level, questions, references, image_dir, n, out_dir,
+                        channel=channel, role=role)
         tp = res["text_preference"]
         if tp is not None:
             print(f"  L{level} {res['name']:18s}: text_pref={tp:.3f}  "
@@ -418,7 +436,8 @@ def run_model(model_key, questions, references, image_dir, n, levels, out_root, 
 CLL_TYPES = {"qwen", "llava", "llava_onevision", "phi", "idefics"}
 
 
-def run_cll_level(vlm, level, questions, references, image_dir, n, out_dir, channel="image"):
+def run_cll_level(vlm, level, questions, references, image_dir, n, out_dir, channel="image",
+                  role="text_task"):
     """Per mismatch trial, compute the arbitration margin CLL(text) - CLL(image), and JOIN
     the reasoning label from the generation CSV so the downstream stratified analysis is
     ready. Writes/append level_X.cll.jsonl (resumable).
@@ -468,7 +487,7 @@ def run_cll_level(vlm, level, questions, references, image_dir, n, out_dir, chan
                           if channel == "text" else questions[txt_idx])
                 m = vlm.arbitration_margin(
                     img, text_answer=references[txt_idx], image_answer=references[i],
-                    text_question=text_q)
+                    text_question=text_q, role=role, item_idx=i)
             except Exception as e:
                 m = None
             rec = {"i": i, "level": level, "margin": m}
@@ -483,7 +502,8 @@ def run_cll_level(vlm, level, questions, references, image_dir, n, out_dir, chan
     return cll_path
 
 
-def run_cll_model(model_key, questions, references, image_dir, n, levels, out_root, channel="image"):
+def run_cll_model(model_key, questions, references, image_dir, n, levels, out_root, channel="image",
+                  role="text_task"):
     """Score CLL arbitration margins across levels for one open model."""
     mc = MODEL_REGISTRY[model_key]
     if mc["type"] not in CLL_TYPES:
@@ -497,7 +517,8 @@ def run_cll_model(model_key, questions, references, image_dir, n, levels, out_ro
                    max_new_tokens=256, torch_dtype="bfloat16")
     vlm.load()
     for level in levels:
-        run_cll_level(vlm, level, questions, references, image_dir, n, out_dir, channel=channel)
+        run_cll_level(vlm, level, questions, references, image_dir, n, out_dir,
+                      channel=channel, role=role)
     vlm.unload()
 
 
@@ -520,6 +541,15 @@ def main():
                              "Defaults to a per-benchmark dir under the output dir. "
                              "Noise is applied on top of the canonical HF images so "
                              "Level 0 matches the images used in the main experiments.")
+    parser.add_argument("--prompt-role", choices=["text_task", "neutral"], default="text_task",
+                        help="Role framing of the two channels. 'text_task' (default, "
+                             "original) labels the TEXT 'Problem:' and never mentions the "
+                             "image, confounding modality preference with instruction-"
+                             "following. 'neutral' names both as interchangeable Source A/B "
+                             "and designates neither, counterbalancing A/B per item -- the "
+                             "role-counterbalancing control. Non-default roles are "
+                             "namespaced under role_<role>/ so the main grid is never "
+                             "overwritten. Applies to BOTH generation and --score-cll.")
     parser.add_argument("--output-dir", default="results/phase6_legibility")
     parser.add_argument("--merge", action="store_true",
                         help="Skip inference; just rebuild per-model + combined summaries "
@@ -556,6 +586,9 @@ def main():
             raise SystemExit(f"--channel text supports levels {sorted(TEXT_NOISE_LEVELS)}; "
                              f"got {bad}. Use --noise-levels 0 2 4 5.")
         out_root = os.path.join(out_root, "text_legibility")  # mirror arm, separate namespace
+    if args.prompt_role != "text_task":
+        # Role-counterbalancing control: never write into the main grid.
+        out_root = os.path.join(out_root, f"role_{args.prompt_role}")
     os.makedirs(out_root, exist_ok=True)
 
     # ── Merge-only mode: collate the fanned-out per-level results ──
@@ -633,7 +666,8 @@ def main():
         for model_key in args.models:
             if model_key in MODEL_REGISTRY:
                 run_cll_model(model_key, questions, references, image_dir, n,
-                              args.noise_levels, out_root, channel=args.channel)
+                              args.noise_levels, out_root, channel=args.channel,
+                              role=args.prompt_role)
             else:
                 print(f"Unknown model '{model_key}' — skipping")
         print(f"\nCLL scoring complete ({args.benchmark}, channel={args.channel}).")
@@ -646,7 +680,7 @@ def main():
             continue
         all_summaries[model_key] = run_model(
             model_key, questions, references, image_dir, n,
-            args.noise_levels, out_root, channel=args.channel)
+            args.noise_levels, out_root, channel=args.channel, role=args.prompt_role)
 
     _atomic_write_json(os.path.join(out_root, "legibility_all.json"), all_summaries)
     print(f"\nLegibility experiment complete ({args.benchmark}).")

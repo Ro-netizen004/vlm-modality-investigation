@@ -36,20 +36,20 @@ PAPER = {
         "Phi-3.5-vision-instruct": {"TextPref": 0.987, "TextPref*": 0.869, "Neither*": 0.058},
     },
     "tab:cll_replication_image": {
-        "Idefics3-8B-Llama3": {"gsm8k_d": 0.88, "gsm8k_p": 9e-4, "svamp_d": 2.25, "svamp_p": 2e-4},
-        "Qwen2.5-VL-7B-Instruct": {"gsm8k_d": 0.76, "gsm8k_p": 4e-26, "svamp_d": 1.28, "svamp_p": 3e-7},
-        "Qwen2-VL-2B-Instruct": {"gsm8k_d": 0.09, "gsm8k_p": 2e-1, "svamp_d": 0.39, "svamp_p": 6e-2},
-        "llava-onevision-qwen2-7b-ov-hf": {"gsm8k_d": 0.07, "gsm8k_p": 7e-1, "svamp_d": 0.30, "svamp_p": 6e-1},
-        "llava-v1.6-mistral-7b-hf": {"gsm8k_d": -0.01, "gsm8k_p": 8e-1, "svamp_d": 0.24, "svamp_p": 2e-1},
-        "Phi-3.5-vision-instruct": {"gsm8k_d": -0.11, "gsm8k_p": 4e-1, "svamp_d": -0.33, "svamp_p": 5e-1},
+        "Idefics3-8B-Llama3": {"gsm8k_d": 0.86, "gsm8k_p": 1.4e-41, "svamp_d": 1.95, "svamp_p": 1.7e-33},
+        "Qwen2.5-VL-7B-Instruct": {"gsm8k_d": 0.49, "gsm8k_p": 1.3e-146, "svamp_d": 0.92, "svamp_p": 2.9e-39},
+        "Qwen2-VL-2B-Instruct": {"gsm8k_d": 0.06, "gsm8k_p": 3.8e-28, "svamp_d": 0.32, "svamp_p": 2.0e-23},
+        "llava-onevision-qwen2-7b-ov-hf": {"gsm8k_d": 0.00, "gsm8k_p": 2.4e-1, "svamp_d": 0.01, "svamp_p": 5.2e-2},
+        "llava-v1.6-mistral-7b-hf": {"gsm8k_d": 0.00, "gsm8k_p": 2.7e-1, "svamp_d": 0.17, "svamp_p": 4.2e-16},
+        "Phi-3.5-vision-instruct": {"gsm8k_d": -0.05, "gsm8k_p": 6.4e-6, "svamp_d": -0.11, "svamp_p": 6.7e-5},
     },
     "tab:mirror_cll": {
-        "Idefics3-8B-Llama3": {"gsm8k_d": -5.88, "gsm8k_p": 4e-104, "svamp_d": -10.72, "svamp_p": 2e-48},
-        "Phi-3.5-vision-instruct": {"gsm8k_d": -1.26, "gsm8k_p": 4e-115, "svamp_d": -3.69, "svamp_p": 3e-44},
-        "Qwen2-VL-2B-Instruct": {"gsm8k_d": -0.91, "gsm8k_p": 3e-83, "svamp_d": -1.39, "svamp_p": 3e-27},
-        "Qwen2.5-VL-7B-Instruct": {"gsm8k_d": -1.36, "gsm8k_p": 2e-146, "svamp_d": -4.18, "svamp_p": 9e-67},
-        "llava-onevision-qwen2-7b-ov-hf": {"gsm8k_d": -1.52, "gsm8k_p": 5e-159, "svamp_d": -3.50, "svamp_p": 5e-47},
-        "llava-v1.6-mistral-7b-hf": {"gsm8k_d": None, "svamp_d": -1.73, "svamp_p": 2e-36},
+        "Idefics3-8B-Llama3": {"gsm8k_d": -5.38, "gsm8k_p": 1.5e-147, "svamp_d": -9.16, "svamp_p": 1.7e-47},
+        "Phi-3.5-vision-instruct": {"gsm8k_d": -1.32, "gsm8k_p": 5.5e-137, "svamp_d": -3.75, "svamp_p": 2.9e-42},
+        "Qwen2-VL-2B-Instruct": {"gsm8k_d": -0.95, "gsm8k_p": 1.8e-129, "svamp_d": -1.27, "svamp_p": 9.6e-36},
+        "Qwen2.5-VL-7B-Instruct": {"gsm8k_d": -1.44, "gsm8k_p": 7.6e-177, "svamp_d": -4.07, "svamp_p": 3.8e-48},
+        "llava-onevision-qwen2-7b-ov-hf": {"gsm8k_d": -1.58, "gsm8k_p": 1.9e-176, "svamp_d": -3.27, "svamp_p": 3.5e-45},
+        "llava-v1.6-mistral-7b-hf": {"gsm8k_d": None, "svamp_d": -1.61, "svamp_p": 2.4e-40},
     },
 }
 
@@ -110,9 +110,9 @@ def median_margins(root, model, bench):
                 row = json.loads(line)
                 mm = (row.get("margin") or {}).get("margin_mean")
                 if mm is not None:
-                    vals.append(mm)
+                    vals.append((int(row["i"]), mm))
         if vals:
-            per[level] = vals
+            per[level] = [value for _, value in sorted(vals)]
     return per
 
 
@@ -120,8 +120,11 @@ def cll_stats(root, model, bench):
     per = median_margins(root, model, bench)
     if 0 not in per or 5 not in per:
         return None
-    _, pu = stats.mannwhitneyu(per[5], per[0], alternative="two-sided")
-    d = st.median(per[5]) - st.median(per[0])
+    # median_margins sorts both levels by stable item id.
+    n = min(len(per[0]), len(per[5]))
+    diffs = [per[5][i] - per[0][i] for i in range(n)]
+    _, pu = stats.wilcoxon(diffs, alternative="two-sided", zero_method="wilcox")
+    d = st.median(diffs)
     return d, pu, st.median(per[0]), st.median(per[5])
 
 
@@ -205,7 +208,7 @@ def main():
             print(f"  text {model} {bench}: d={d:+.2f} med L0={m0:.2f} L5={m5:.2f} p={pval:.2e}")
 
     print("\n" + "=" * 70)
-    print("CLL sign agreement (paper: 0.82, n=15257)")
+    print("CLL sign agreement (paper: 0.82, n=15991)")
     print("=" * 70)
     pooled_ok = pooled_n = 0
     for bench in ("gsm8k", "svamp"):
@@ -229,8 +232,8 @@ def main():
     if pooled_n:
         agr = pooled_ok / pooled_n
         print(f"  computed: {agr:.3f} n={pooled_n}")
-        if abs(agr - 0.82) > 0.02 or abs(pooled_n - 15257) > 500:
-            issues.append(f"MISMATCH sign agreement: got {agr:.3f} n={pooled_n}, paper 0.82 n=15257")
+        if abs(agr - 0.82) > 0.02 or abs(pooled_n - 15991) > 50:
+            issues.append(f"MISMATCH sign agreement: got {agr:.3f} n={pooled_n}, paper 0.82 n=15991")
         else:
             ok.append("sign agreement")
 
