@@ -70,6 +70,9 @@ for BM_N in "svamp 300" "gsm8k 300"; do set -- $BM_N; BM=$1; N=$2
   done
 done
 ```
+Use `--channels text` or `--channels image` for a partial grid. The runner resumes
+completed model/level cells from the per-model JSON and rebuilds the aggregate from all
+compatible per-model files, so separate one-model Slurm jobs do not erase prior channels.
 
 **survival** (CPU, model-independent). Use an ISOLATED conda env so the tesseract install
 never perturbs the `vlm` env your running/queued jobs depend on:
