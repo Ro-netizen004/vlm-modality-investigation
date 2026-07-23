@@ -10,6 +10,10 @@ __pycache__/
 venv/
 ENV/
 env/
+.artifact-chartqa/
+.tmp_decodability_test/
+.tmp_workbook_review/
+results/
 
 # Jupyter / IPython
 .ipynb_checkpoints/

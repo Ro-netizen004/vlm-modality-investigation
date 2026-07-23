@@ -25,6 +25,10 @@ Usage:
     python scripts/measure_legibility_decodability.py --models Qwen2.5-VL-7B-Instruct \
         --benchmark gsm8k --num-problems 300
 
+    # one channel only; completed model/level cells are resumed safely
+    python scripts/measure_legibility_decodability.py --models Qwen2.5-VL-7B-Instruct \
+        --benchmark gsm8k --num-problems 200 --channels text
+
     # metadata-only sanity check (no model load, no HF download)
     python scripts/measure_legibility_decodability.py --dry-run --num-problems 5
 """
@@ -57,19 +61,31 @@ def _atomic_write_json(path, obj):
     os.replace(tmp, path)
 
 
-def measure_model(model_key, questions, references, images, levels, n, out_dir, dry_run):
+def measure_model(model_key, questions, references, images, levels, channels, n,
+                  out_dir, dry_run):
     """Return {'image': {L: acc}, 'text': {L: acc}, 'n': n} for one model."""
     mc = MODEL_REGISTRY[model_key]
+    result_path = os.path.join(out_dir, f"{model_key}.json")
     result = {"model": model_key, "n": n, "image": {}, "text": {}}
+    if os.path.exists(result_path):
+        with open(result_path) as f:
+            previous = json.load(f)
+        if previous.get("model") != model_key or previous.get("n") != n:
+            raise ValueError(
+                f"{result_path} belongs to model={previous.get('model')}, "
+                f"n={previous.get('n')}; refusing an incompatible resume"
+            )
+        result["image"].update(previous.get("image", {}))
+        result["text"].update(previous.get("text", {}))
 
     if dry_run:
         # No model: just confirm the degradations assemble for each level.
         for L in levels:
-            if L in NOISE_LEVELS:
-                result["image"][L] = None
-            if L in TEXT_NOISE_LEVELS:
+            if "image" in channels and L in NOISE_LEVELS:
+                result["image"][str(L)] = None
+            if "text" in channels and L in TEXT_NOISE_LEVELS:
                 _ = degrade_text(questions[0], L, seed=0)
-                result["text"][L] = None
+                result["text"][str(L)] = None
         return result
 
     from src.models import VLMModel
@@ -78,7 +94,10 @@ def measure_model(model_key, questions, references, images, levels, n, out_dir, 
     vlm.load()
     try:
         # ── image channel: image-only accuracy at each image level ──
-        for L in [x for x in levels if x in NOISE_LEVELS]:
+        for L in [x for x in levels if "image" in channels and x in NOISE_LEVELS]:
+            if str(L) in result["image"]:
+                print(f"  {model_key} image L{L}: already complete, skipping")
+                continue
             correct = []
             for i in tqdm(range(n), desc=f"{model_key} img L{L}"):
                 try:
@@ -93,11 +112,14 @@ def measure_model(model_key, questions, references, images, levels, n, out_dir, 
                 except Exception as e:
                     pred = f"ERROR: {e}"
                 correct.append(answers_match(pred, references[i]))
-            result["image"][L] = compute_accuracy(correct)
-            _atomic_write_json(os.path.join(out_dir, f"{model_key}.json"), result)
+            result["image"][str(L)] = compute_accuracy(correct)
+            _atomic_write_json(result_path, result)
 
         # ── text channel: text-only accuracy on degraded text at each text level ──
-        for L in [x for x in levels if x in TEXT_NOISE_LEVELS]:
+        for L in [x for x in levels if "text" in channels and x in TEXT_NOISE_LEVELS]:
+            if str(L) in result["text"]:
+                print(f"  {model_key} text L{L}: already complete, skipping")
+                continue
             correct = []
             for i in tqdm(range(n), desc=f"{model_key} txt L{L}"):
                 try:
@@ -106,8 +128,8 @@ def measure_model(model_key, questions, references, images, levels, n, out_dir, 
                 except Exception as e:
                     pred = f"ERROR: {e}"
                 correct.append(answers_match(pred, references[i]))
-            result["text"][L] = compute_accuracy(correct)
-            _atomic_write_json(os.path.join(out_dir, f"{model_key}.json"), result)
+            result["text"][str(L)] = compute_accuracy(correct)
+            _atomic_write_json(result_path, result)
     finally:
         vlm.unload()
     return result
@@ -121,6 +143,9 @@ def main():
     ap.add_argument("--num-problems", type=int, default=300,
                     help="problems for the accuracy estimate (300 gives ~+-5%% CI)")
     ap.add_argument("--levels", nargs="+", type=int, default=DEFAULT_LEVELS)
+    ap.add_argument("--channels", nargs="+", choices=["image", "text"],
+                    default=["image", "text"],
+                    help="single-modality channels to measure (default: both)")
     ap.add_argument("--output-dir", default="results/phase_control/decodability")
     ap.add_argument("--dry-run", action="store_true",
                     help="assemble degradations only; no model load, no HF images")
@@ -142,14 +167,26 @@ def main():
     for mk in models:
         if mk not in MODEL_REGISTRY:
             print(f"  unknown model '{mk}' — skipping"); continue
-        res = measure_model(mk, questions, references, images, args.levels, n, out_dir, args.dry_run)
+        res = measure_model(mk, questions, references, images, args.levels,
+                            args.channels, n, out_dir, args.dry_run)
         all_res[mk] = res
         img = {L: (f"{v:.3f}" if v is not None else "-") for L, v in res["image"].items()}
         txt = {L: (f"{v:.3f}" if v is not None else "-") for L, v in res["text"].items()}
         print(f"  {mk:30s} image_acc={img}  text_acc={txt}")
 
     if not args.dry_run:
-        _atomic_write_json(os.path.join(out_dir, "decodability_all.json"), all_res)
+        # Rebuild from all compatible per-model files. This makes independent
+        # one-model Slurm jobs safe: the aggregate never intentionally drops a
+        # model completed by an earlier job.
+        aggregate = {}
+        for path in sorted(Path(out_dir).glob("*.json")):
+            if path.name == "decodability_all.json":
+                continue
+            with path.open() as f:
+                item = json.load(f)
+            if item.get("model") and item.get("n") == n:
+                aggregate[item["model"]] = item
+        _atomic_write_json(os.path.join(out_dir, "decodability_all.json"), aggregate)
         print(f"\nDecodability written -> {out_dir}/")
     else:
         print("\n[dry-run] degradations assemble OK; no accuracies computed.")

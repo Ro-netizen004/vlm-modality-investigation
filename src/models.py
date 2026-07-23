@@ -769,7 +769,17 @@ class VLMModel:
         measure matches the generation-side framing (both must use the same role or
         the two measures answer different questions).
         """
-        ctx = self._ctx_for_scoring(direct_mismatch_prompt(text_question, role, item_idx))
+        prompt = direct_mismatch_prompt(text_question, role, item_idx)
+        return self.candidate_margin(image, text_answer, image_answer, prompt)
+
+    def candidate_margin(self, image, text_answer, image_answer, prompt):
+        """Score two answer candidates under an arbitrary shared multimodal prompt.
+
+        Positive margin means the text-supported candidate has greater mean answer-token
+        log probability than the image-supported candidate. This public wrapper supports
+        conflict controls whose scaffold differs from the rendered-math mismatch prompt.
+        """
+        ctx = self._ctx_for_scoring(prompt)
         t = self._score_continuation(ctx, image, str(text_answer))
         im = self._score_continuation(ctx, image, str(image_answer))
         if t is None or im is None:
