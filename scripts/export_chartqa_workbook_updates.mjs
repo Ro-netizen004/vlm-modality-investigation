@@ -13,7 +13,10 @@ const values = used.values;
 const displayToField = {
   "Pool ID": "conflict_id",
   "Status": "status",
+  "Question": "question",
+  "A (chart)": "image_answer",
   "B (report)": "text_answer",
+  "Type": "answer_type",
   "Strategy": "counterfactual_strategy",
   "Unit": "unit_class",
   "Evidence-bearing report": "text_report",
@@ -22,6 +25,7 @@ const displayToField = {
   "Reviewer": "reviewer",
   "Exclusion reason": "exclusion_reason",
   "Notes": "notes",
+  "Source table": "source_table",
 };
 const headers = values[0].map(value => String(value ?? "").trim());
 const updates = [];

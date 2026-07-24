@@ -244,6 +244,87 @@ def compile_manifest(sheet: Path, output: Path, target_size: int,
     print(f"Compiled {len(compiled)} reviewed rows -> {output}")
 
 
+def compile_workbook_export(export_path: Path, output: Path, target_size: int,
+                            exclude_ids: set[int]):
+    """Compile the JSON exported from the curation workbook.
+
+    Dataset indices are resolved against the public ChartQA test metadata on the
+    machine doing the compilation. The workbook remains unchanged.
+    """
+    from datasets import load_dataset
+
+    with export_path.open(encoding="utf-8") as handle:
+        rows = json.load(handle)
+    selected = [
+        row for row in rows
+        if str(row.get("status", "")).strip().lower() == "include"
+        and int(row["conflict_id"]) not in exclude_ids
+    ]
+    errors = []
+    for index, row in enumerate(selected):
+        if not str(row.get("text_report", "")).strip():
+            errors.append(f"row {index}: empty text_report")
+        if not str(row.get("text_answer", "")).strip():
+            errors.append(f"row {index}: empty text_answer")
+        if str(row.get("entailed", "")).strip().lower() not in {"yes", "true", "1"}:
+            errors.append(f"row {index}: not marked entailed")
+        if str(row.get("counterfactual_valid", "")).strip().lower() not in {"yes", "true", "1"}:
+            errors.append(f"row {index}: counterfactual not marked valid")
+        if not str(row.get("reviewer", "")).strip():
+            errors.append(f"row {index}: missing reviewer")
+        errors.extend(validate_counterfactual(row, index))
+    if len(selected) != target_size:
+        errors.append(f"expected {target_size} included rows after exclusions; found {len(selected)}")
+    if errors:
+        raise RuntimeError("Workbook export failed validation:\n" + "\n".join(errors[:50]))
+
+    metadata = load_dataset("lmms-lab/ChartQA", split="test")
+    if "image" in metadata.column_names:
+        metadata = metadata.remove_columns("image")
+    by_key = {}
+    for dataset_index, item in enumerate(metadata):
+        question = str(item.get("question", item.get("query", ""))).strip()
+        answer = str(item.get("answer", item.get("label", ""))).strip()
+        by_key.setdefault((question, answer), []).append(dataset_index)
+
+    compiled = []
+    for row in selected:
+        key = (str(row["question"]).strip(), str(row["image_answer"]).strip())
+        matches = by_key.get(key, [])
+        if len(matches) != 1:
+            raise RuntimeError(
+                f"Expected one ChartQA test match for pool ID {row['conflict_id']} "
+                f"{key!r}; found {len(matches)}"
+            )
+        compiled.append({
+            "conflict_id": len(compiled),
+            "pool_conflict_id": int(row["conflict_id"]),
+            "dataset_index": matches[0],
+            "question": row["question"],
+            "image_answer": row["image_answer"],
+            "text_answer": row["text_answer"],
+            "answer_type": row["answer_type"],
+            "image_label": "A" if len(compiled) % 2 == 0 else "B",
+            "text_label": "B" if len(compiled) % 2 == 0 else "A",
+            "report_type": "evidence",
+            "counterfactual_strategy": row["counterfactual_strategy"],
+            "unit_class": row.get("unit_class", ""),
+            "text_report": row["text_report"],
+            "source_table": row["source_table"],
+            "evidence_validation": {
+                "entailed": True,
+                "counterfactual_valid": True,
+                "reviewer": row["reviewer"],
+                "notes": row.get("notes", ""),
+            },
+        })
+    output.parent.mkdir(parents=True, exist_ok=True)
+    with output.open("w", encoding="utf-8") as handle:
+        json.dump(compiled, handle, indent=2, ensure_ascii=False)
+    print(f"Compiled {len(compiled)} workbook rows -> {output}")
+    print(f"Excluded pool IDs: {sorted(exclude_ids)}")
+
+
 def main():
     parser = argparse.ArgumentParser()
     subparsers = parser.add_subparsers(dest="command", required=True)
@@ -261,11 +342,19 @@ def main():
     apply_cmd = subparsers.add_parser("apply")
     apply_cmd.add_argument("--sheet", type=Path, required=True)
     apply_cmd.add_argument("--updates", type=Path, required=True)
+    workbook_cmd = subparsers.add_parser("compile-workbook-export")
+    workbook_cmd.add_argument("--export", type=Path, required=True)
+    workbook_cmd.add_argument("--output", type=Path, required=True)
+    workbook_cmd.add_argument("--target-size", type=int, required=True)
+    workbook_cmd.add_argument("--exclude-ids", nargs="+", type=int, default=[])
     args = parser.parse_args()
     if args.command == "export":
         export_sheet(args.draft_manifest, args.chartqa_root, args.output)
     elif args.command == "apply":
         apply_updates(args.sheet, args.updates)
+    elif args.command == "compile-workbook-export":
+        compile_workbook_export(args.export, args.output, args.target_size,
+                                set(args.exclude_ids))
     else:
         compile_manifest(args.sheet, args.output, args.target_size,
                          args.allow_undocumented_exclusions)
