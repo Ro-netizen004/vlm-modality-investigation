@@ -36,6 +36,11 @@ from src.text_noise import TEXT_NOISE_LEVELS, degrade_text
 
 DESIGN_VERSION = "chartqa-same-question-conflict-v4"
 LEVELS = (0, 2, 4, 5)
+DEFAULT_DATASET_REPO = "vlm-modality-research/chartqa-evidence-conflict-v1"
+DEFAULT_DATASET_REVISION = "3ead711196b4bf75ae6c23be8148bb8417047c4e"
+FROZEN_MANIFEST_SHA256 = (
+    "388bce0572487024f5ac12261621cbab8931ec3032d8bf0c65a258c134d20842"
+)
 YES_SYNONYMS = {"yes", "true", "correct", "affirmative"}
 NO_SYNONYMS = {"no", "false", "incorrect", "negative"}
 CURRENCY = {"$": "usd", "€": "eur", "£": "gbp", "¥": "jpy"}
@@ -138,6 +143,56 @@ def load_chartqa_metadata(arrow_path=None):
         question=row.get("question", row.get("query", "")),
         reference_answer=str(row.get("answer", row.get("label", ""))),
     ) for index, row in enumerate(dataset)]
+
+
+def load_published_conflict_dataset(repo, revision, expected_n):
+    """Load the frozen derivative dataset and reconstruct its manifest exactly."""
+    dataset = load_dataset(repo, split="test", revision=revision)
+    if len(dataset) != expected_n:
+        raise RuntimeError(
+            f"Published dataset has {len(dataset)} rows; expected {expected_n}"
+        )
+    embedded_hashes = set(dataset["manifest_sha256"])
+    if embedded_hashes != {FROZEN_MANIFEST_SHA256}:
+        raise RuntimeError(
+            f"Unexpected embedded manifest hashes: {sorted(embedded_hashes)}"
+        )
+    manifest, items_by_id = [], {}
+    for row in dataset:
+        dataset_index = int(row["chartqa_test_index"])
+        manifest.append({
+            "conflict_id": int(row["conflict_id"]),
+            "pool_conflict_id": int(row["pool_conflict_id"]),
+            "dataset_index": dataset_index,
+            "question": row["question"],
+            "image_answer": row["chart_answer"],
+            "text_answer": row["report_answer"],
+            "answer_type": row["answer_type"],
+            "image_label": row["chart_source_label"],
+            "text_label": row["report_source_label"],
+            "report_type": "evidence",
+            "counterfactual_strategy": row["counterfactual_strategy"],
+            "unit_class": row["unit_class"],
+            "text_report": row["text_report"],
+            "source_table": row["source_table"],
+            "evidence_validation": {
+                "entailed": True,
+                "counterfactual_valid": True,
+                "reviewer": row["reviewer"],
+                "notes": row["review_notes"],
+            },
+        })
+        # Several QA rows may share one chart; the image is identical for that index.
+        items_by_id[dataset_index] = SimpleNamespace(
+            id=dataset_index, image=row["image"]
+        )
+    digest = manifest_digest(manifest)
+    if digest != FROZEN_MANIFEST_SHA256:
+        raise RuntimeError(
+            f"Reconstructed manifest hash {digest} does not match frozen "
+            f"{FROZEN_MANIFEST_SHA256}"
+        )
+    return manifest, items_by_id
 
 
 def report_text(row):
@@ -357,24 +412,39 @@ def main():
     parser.add_argument("--prepare-only", action="store_true")
     parser.add_argument("--metadata-arrow", type=Path, default=None,
                         help="Optional cached ChartQA Arrow file for fast offline preparation")
+    parser.add_argument("--dataset-repo", default=None,
+                        help="Load the frozen conflict rows/images from this HF dataset")
+    parser.add_argument("--dataset-revision", default=None,
+                        help="Pinned HF dataset commit; required with --dataset-repo")
     args = parser.parse_args()
 
     if any(level not in LEVELS for level in args.levels):
         raise SystemExit(f"Levels must be drawn from {LEVELS}")
     condition_root = args.output_dir / args.report_type
-    manifest_path = args.manifest or condition_root / "manifest.json"
-    if manifest_path.exists():
+    published_items = None
+    if args.dataset_repo:
+        if not args.dataset_revision:
+            raise RuntimeError("--dataset-revision is required with --dataset-repo")
+        manifest, published_items = load_published_conflict_dataset(
+            args.dataset_repo, args.dataset_revision, args.num_problems
+        )
+        manifest_path = (
+            f"hf://datasets/{args.dataset_repo}@{args.dataset_revision}"
+        )
+    else:
+        manifest_path = args.manifest or condition_root / "manifest.json"
+    if not args.dataset_repo and manifest_path.exists():
         with manifest_path.open(encoding="utf-8") as handle:
             manifest = json.load(handle)
         if len(manifest) != args.num_problems:
             raise RuntimeError(f"Manifest has {len(manifest)} items; requested {args.num_problems}")
-    elif args.report_type == "assertion":
+    elif not args.dataset_repo and args.report_type == "assertion":
         items = (load_chartqa_metadata(args.metadata_arrow) if args.prepare_only
                  else load_benchmark("chartqa", None))
         manifest = build_manifest(items, args.num_problems, args.seed)
         manifest_path.parent.mkdir(parents=True, exist_ok=True)
         atomic_json(manifest_path, manifest)
-    else:
+    elif not args.dataset_repo:
         raise RuntimeError(
             "The evidence-bearing main condition requires a prebuilt --manifest with "
             "text_report, source_table, and evidence_validation. Use the official "
@@ -386,8 +456,11 @@ def main():
         return
     if not args.models or args.arm is None or args.mode is None:
         parser.error("--models, --arm, and --mode are required unless --prepare-only is used")
-    items = load_benchmark("chartqa", None)
-    items_by_id = {int(item.id): item for item in items}
+    if published_items is not None:
+        items_by_id = published_items
+    else:
+        items = load_benchmark("chartqa", None)
+        items_by_id = {int(item.id): item for item in items}
 
     for model_key in args.models:
         if model_key not in MODEL_REGISTRY:
@@ -400,7 +473,9 @@ def main():
         model_dir.mkdir(parents=True, exist_ok=True)
         config = {"design_version": DESIGN_VERSION, "model": model_key, "arm": args.arm,
                   "mode": args.mode, "report_type": args.report_type, "n": len(manifest),
-                  "manifest_sha256": manifest_digest(manifest)}
+                  "manifest_sha256": manifest_digest(manifest),
+                  "dataset_repo": args.dataset_repo,
+                  "dataset_revision": args.dataset_revision}
         config_path = model_dir / f"config_{args.mode}.json"
         if config_path.exists() and json.load(config_path.open()) != config:
             raise RuntimeError(f"Incompatible existing configuration: {config_path}")
