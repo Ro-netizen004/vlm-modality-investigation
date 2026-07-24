@@ -279,10 +279,11 @@ def compile_workbook_export(export_path: Path, output: Path, target_size: int,
         raise RuntimeError("Workbook export failed validation:\n" + "\n".join(errors[:50]))
 
     metadata = load_dataset("lmms-lab/ChartQA", split="test")
-    if "image" in metadata.column_names:
-        metadata = metadata.remove_columns("image")
+    metadata_without_images = (
+        metadata.remove_columns("image") if "image" in metadata.column_names else metadata
+    )
     by_key = {}
-    for dataset_index, item in enumerate(metadata):
+    for dataset_index, item in enumerate(metadata_without_images):
         question = str(item.get("question", item.get("query", ""))).strip()
         answer = str(item.get("answer", item.get("label", ""))).strip()
         by_key.setdefault((question, answer), []).append(dataset_index)
@@ -291,6 +292,20 @@ def compile_workbook_export(export_path: Path, output: Path, target_size: int,
     for row in selected:
         key = (str(row["question"]).strip(), str(row["image_answer"]).strip())
         matches = by_key.get(key, [])
+        if len(matches) > 1 and "image" in metadata.column_names:
+            # ChartQA occasionally duplicates a QA record at adjacent test indices.
+            # Resolve it only when the underlying chart pixels are identical.
+            import hashlib
+            import io
+
+            hashes = set()
+            for match in matches:
+                image = metadata[match]["image"].convert("RGB")
+                buffer = io.BytesIO()
+                image.save(buffer, format="PNG")
+                hashes.add(hashlib.sha256(buffer.getvalue()).hexdigest())
+            if len(hashes) == 1:
+                matches = [min(matches)]
         if len(matches) != 1:
             raise RuntimeError(
                 f"Expected one ChartQA test match for pool ID {row['conflict_id']} "
