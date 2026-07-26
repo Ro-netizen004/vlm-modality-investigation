@@ -114,6 +114,15 @@ def main():
     ap.add_argument("--survival", default=None)
     ap.add_argument("--image-root", default=None)
     ap.add_argument("--text-root", default=None)
+    ap.add_argument(
+        "--phase4-image-root",
+        default=None,
+        help=(
+            "Optional fallback directory containing Phase 4 per-model "
+            "level_<L>_*.json image-only accuracy files. Used only when the "
+            "decodability JSON has no image value for a requested level."
+        ),
+    )
     ap.add_argument("--min-headroom", type=float, default=0.30,
                     help="task_acc axis: drop a channel if its L0 accuracy < this")
     args = ap.parse_args()
@@ -163,6 +172,16 @@ def main():
     # ── legibility-loss providers ──
     def taskacc_loss(m, ch, L):
         acc = _intkeys((decod.get(m, {}) or {}).get(ch)) if decod else {}
+        if ch == "image" and (0 not in acc or L not in acc) and args.phase4_image_root:
+            model_dir = Path(args.phase4_image_root) / m
+            for level in LEVELS:
+                matches = sorted(model_dir.glob(f"level_{level}_*.json"))
+                if len(matches) != 1:
+                    continue
+                with matches[0].open(encoding="utf-8") as handle:
+                    phase4 = json.load(handle)
+                if phase4.get("accuracy") is not None:
+                    acc[level] = float(phase4["accuracy"])
         if 0 not in acc or L not in acc or acc[0] < 1e-6:
             return None, None
         headroom = acc[0] >= args.min_headroom
@@ -208,7 +227,7 @@ def main():
             print(f"      {nm:16s} = {b:+.3f}  (se {se:.3f}, p={p:.2g}) {star}")
         b3, p3 = fit["beta"][3], fit["p"][3]
         verdict = ("residual TEXT-PRIMACY beyond legibility" if (p3 < 0.05 and b3 > 0)
-                   else "asymmetry explained by legibility loss (n.s. interaction)" if p3 >= 0.05
+                   else "no statistically resolved residual asymmetry" if p3 >= 0.05
                    else "residual IMAGE-primacy (unexpected)")
         print(f"    -> b3 (text slope - image slope) = {b3:+.3f}, p={p3:.2g}: {verdict}\n")
 

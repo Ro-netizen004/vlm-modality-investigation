@@ -244,6 +244,18 @@ def neutral_prompt(row, report, chain_of_thought):
     )
 
 
+def unimodal_prompt(row, arm, report=None):
+    ending = (
+        "Respond with exactly one line in the form '#### <answer>'. "
+        "After ####, give only the answer value; do not explain your reasoning."
+    )
+    if arm == "image":
+        evidence = "Use the attached chart as the only evidence source."
+    else:
+        evidence = f"Use the following report as the only evidence source:\n{report}"
+    return f"Question: {row['question']}\n\n{evidence}\n\n{ending}"
+
+
 def extract_final_answer(prediction):
     """Return only the explicitly marked final answer, or a terse answer-only output."""
     text = str(prediction).strip()
@@ -352,21 +364,48 @@ def run_level(vlm, items_by_id, manifest, model_dir, arm, level, mode):
                 image = apply_noise_level(image, level, text=None, seed=42 + i)
             elif level != 0:
                 report = degrade_text(report, level, seed=i)
-            prompt = neutral_prompt(row, report, chain_of_thought=(mode == "generation"))
             try:
                 if mode == "generation":
+                    prompt = neutral_prompt(row, report, chain_of_thought=True)
                     prediction = vlm.generate_with_image(image, text_prompt=prompt)
                     follows, extracted, normalized = classify(prediction, row)
                     result = {"prediction": prediction, "extracted_final": extracted,
                               "normalized_final": repr(normalized), "follows": follows}
-                else:
+                elif mode == "cll":
+                    prompt = neutral_prompt(row, report, chain_of_thought=False)
                     margin = vlm.candidate_margin(
                         image, row["text_answer"], row["image_answer"], prompt
                     )
                     result = {"margin": margin}
+                else:
+                    prompt = unimodal_prompt(
+                        row, arm, report=report if arm == "text" else None
+                    )
+                    prediction = (
+                        vlm.generate_with_image(image, text_prompt=prompt)
+                        if arm == "image"
+                        else vlm.generate_text_only(prompt)
+                    )
+                    extracted = extract_final_answer(prediction)
+                    normalized = normalize_answer(
+                        extracted, row.get("unit_class", "")
+                    )
+                    target_answer = (
+                        row["image_answer"] if arm == "image" else row["text_answer"]
+                    )
+                    target = normalize_answer(
+                        target_answer, row.get("unit_class", "")
+                    )
+                    result = {
+                        "prediction": prediction,
+                        "extracted_final": extracted,
+                        "normalized_final": repr(normalized),
+                        "target_answer": target_answer,
+                        "correct": normalized is not None and normalized == target,
+                    }
             except Exception as error:
                 result = {"error": repr(error)}
-                if mode == "generation":
+                if mode in {"generation", "decodability"}:
                     result.update(prediction="", follows="invalid")
                 else:
                     result["margin"] = None
@@ -389,9 +428,18 @@ def summarize(model_dir, arm, mode):
             decidable = counts["image"] + counts["text"]
             levels[level] = {"n": len(rows), "counts": dict(counts),
                              "text_preference": counts["text"] / decidable if decidable else None}
-        else:
+        elif mode == "cll":
             valid = [row for row in rows.values() if (row.get("margin") or {}).get("margin_mean") is not None]
             levels[level] = {"n": len(rows), "valid_margins": len(valid)}
+        else:
+            correct = sum(bool(row.get("correct")) for row in rows.values())
+            errors = sum("error" in row for row in rows.values())
+            levels[level] = {
+                "n": len(rows),
+                "correct": correct,
+                "accuracy": correct / len(rows),
+                "errors": errors,
+            }
     atomic_json(model_dir / f"summary_{mode}.json",
                 {"arm": arm, "mode": mode, "levels": levels})
 
@@ -400,7 +448,7 @@ def main():
     parser = argparse.ArgumentParser()
     parser.add_argument("--models", nargs="+", default=[])
     parser.add_argument("--arm", choices=("image", "text"))
-    parser.add_argument("--mode", choices=("generation", "cll"))
+    parser.add_argument("--mode", choices=("generation", "cll", "decodability"))
     parser.add_argument("--levels", nargs="+", type=int, default=list(LEVELS))
     parser.add_argument("--num-problems", type=int, default=300)
     parser.add_argument("--seed", type=int, default=20260721)
