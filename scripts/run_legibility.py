@@ -77,6 +77,7 @@ MODEL_REGISTRY = {
     "GPT-4o-mini":                   {"name": "gpt-4o-mini",                        "type": "openai"},
     # Frontier API model (no GPU; needs GEMINI_API_KEY). VERIFY the exact id via
     # the Gemini models list before a full run.
+    "Gemini-3.5-Flash":              {"name": "gemini-3.5-flash",                   "type": "gemini"},
     "Gemini-2.5-Flash-Lite":         {"name": "gemini-2.5-flash-lite",              "type": "gemini"},
 }
 DEFAULT_MODELS = ["Idefics3-8B-Llama3", "Qwen2.5-VL-7B-Instruct"]  # vulnerable + resilient anchors
