@@ -197,6 +197,81 @@ def load_published_conflict_dataset(repo, revision, expected_n):
     return manifest, items_by_id
 
 
+def load_paired_representation_dataset(
+    repo, revision, expected_n, visual_representation
+):
+    """Load the pinned chart/table release and select one visual representation."""
+    dataset = load_dataset(repo, split="test", revision=revision)
+    if len(dataset) != expected_n:
+        raise RuntimeError(
+            f"Paired representation dataset has {len(dataset)} rows; "
+            f"expected {expected_n}"
+        )
+    required = {
+        "conflict_id", "pool_conflict_id", "chartqa_test_index",
+        "chart_image", "table_image", "question", "chart_answer",
+        "report_answer", "text_report", "answer_type", "unit_class",
+        "counterfactual_strategy", "chart_source_label",
+        "report_source_label", "source_table", "official_table_data",
+        "table_image_sha256", "provenance_scope",
+        "provenance_audit_sha256", "original_manifest_sha256",
+    }
+    missing = sorted(required - set(dataset.column_names))
+    if missing:
+        raise RuntimeError(f"Paired dataset is missing columns: {missing}")
+    original_hashes = set(dataset["original_manifest_sha256"])
+    if original_hashes != {FROZEN_MANIFEST_SHA256}:
+        raise RuntimeError(
+            f"Unexpected original manifest hashes: {sorted(original_hashes)}"
+        )
+    audit_hashes = set(dataset["provenance_audit_sha256"])
+    if len(audit_hashes) != 1:
+        raise RuntimeError(
+            f"Expected one provenance audit hash; found {sorted(audit_hashes)}"
+        )
+
+    image_column = (
+        "chart_image" if visual_representation == "chart" else "table_image"
+    )
+    manifest, items_by_id = [], {}
+    seen_conflict_ids = set()
+    for row in dataset:
+        conflict_id = int(row["conflict_id"])
+        if conflict_id in seen_conflict_ids:
+            raise RuntimeError(f"Duplicate conflict_id in paired dataset: {conflict_id}")
+        seen_conflict_ids.add(conflict_id)
+        dataset_index = int(row["chartqa_test_index"])
+        manifest.append({
+            "conflict_id": conflict_id,
+            "pool_conflict_id": int(row["pool_conflict_id"]),
+            "dataset_index": dataset_index,
+            "question": row["question"],
+            "image_answer": row["chart_answer"],
+            "text_answer": row["report_answer"],
+            "answer_type": row["answer_type"],
+            "image_label": row["chart_source_label"],
+            "text_label": row["report_source_label"],
+            "report_type": "evidence",
+            "counterfactual_strategy": row["counterfactual_strategy"],
+            "unit_class": row["unit_class"],
+            "text_report": row["text_report"],
+            "source_table": row["source_table"],
+            "evidence_validation": {
+                "entailed": True,
+                "counterfactual_valid": True,
+                "reviewer": "frozen curated dataset",
+                "notes": (
+                    f"provenance_scope={row['provenance_scope']}; "
+                    f"audit_sha256={row['provenance_audit_sha256']}"
+                ),
+            },
+        })
+        items_by_id[dataset_index] = SimpleNamespace(
+            id=dataset_index, image=row[image_column].convert("RGB")
+        )
+    return manifest, items_by_id
+
+
 def load_table_ablation_manifest(path: Path, expected_n: int):
     """Load rendered table images while preserving the frozen conflict metadata."""
     rows = []
@@ -630,8 +705,15 @@ def main():
 
     if any(level not in LEVELS for level in args.levels):
         raise SystemExit(f"Levels must be drawn from {LEVELS}")
-    if args.visual_representation == "plain_table" and not args.table_manifest:
-        parser.error("--visual-representation plain_table requires --table-manifest")
+    if (
+        args.visual_representation == "plain_table"
+        and not args.table_manifest
+        and not args.dataset_repo
+    ):
+        parser.error(
+            "--visual-representation plain_table requires --table-manifest "
+            "or --dataset-repo"
+        )
     if args.visual_representation == "chart" and args.table_manifest:
         parser.error("--table-manifest requires --visual-representation plain_table")
     if args.table_manifest and (args.dataset_repo or args.manifest):
@@ -649,9 +731,31 @@ def main():
     elif args.dataset_repo:
         if not args.dataset_revision:
             raise RuntimeError("--dataset-revision is required with --dataset-repo")
-        manifest, published_items = load_published_conflict_dataset(
-            args.dataset_repo, args.dataset_revision, args.num_problems
-        )
+        if args.visual_representation == "plain_table":
+            manifest, published_items = load_paired_representation_dataset(
+                args.dataset_repo,
+                args.dataset_revision,
+                args.num_problems,
+                args.visual_representation,
+            )
+        else:
+            # A paired release can also supply the original chart condition.
+            probe = load_dataset(
+                args.dataset_repo,
+                split="test",
+                revision=args.dataset_revision,
+            )
+            if {"chart_image", "table_image"}.issubset(probe.column_names):
+                manifest, published_items = load_paired_representation_dataset(
+                    args.dataset_repo,
+                    args.dataset_revision,
+                    args.num_problems,
+                    args.visual_representation,
+                )
+            else:
+                manifest, published_items = load_published_conflict_dataset(
+                    args.dataset_repo, args.dataset_revision, args.num_problems
+                )
         manifest_path = (
             f"hf://datasets/{args.dataset_repo}@{args.dataset_revision}"
         )
