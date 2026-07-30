@@ -726,20 +726,23 @@ def main():
             reuse_image_l0_for_text_arm(
                 condition_root, model_key, model_dir, len(manifest)
             )
-        vlm = VLMModel(
-            model_name=spec["name"],
-            model_type=spec["type"],
-            max_new_tokens=args.api_output_tokens if is_api else 128,
-            torch_dtype="bfloat16",
-            openai_reasoning_effort=(
+        vlm_kwargs = {
+            "model_name": spec["name"],
+            "model_type": spec["type"],
+            "max_new_tokens": args.api_output_tokens if is_api else 128,
+            "torch_dtype": "bfloat16",
+        }
+        if spec["type"] == "openai":
+            vlm_kwargs["openai_reasoning_effort"] = (
                 None if args.openai_reasoning_effort == "default"
                 else args.openai_reasoning_effort
-            ),
-            gemini_thinking_level=(
+            )
+        elif spec["type"] == "gemini":
+            vlm_kwargs["gemini_thinking_level"] = (
                 None if args.gemini_thinking_level == "default"
                 else args.gemini_thinking_level
-            ),
-        )
+            )
+        vlm = VLMModel(**vlm_kwargs)
         vlm.load()
         try:
             for level in args.levels:
