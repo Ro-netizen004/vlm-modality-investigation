@@ -1,0 +1,12 @@
+{
+  "items": 229,
+  "requested_items": 229,
+  "skipped_overflow": 0,
+  "excluded_conflict_ids": [
+    45
+  ],
+  "all_questions_matched": true,
+  "chart_answer_string_present": 220,
+  "manifest": "manifest.jsonl",
+  "skipped_manifest": "skipped.jsonl"
+}

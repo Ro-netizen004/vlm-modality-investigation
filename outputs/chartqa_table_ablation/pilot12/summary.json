@@ -1,0 +1,9 @@
+{
+  "items": 12,
+  "excluded_conflict_ids": [
+    45
+  ],
+  "all_questions_matched": true,
+  "chart_answer_string_present": 11,
+  "manifest": "manifest.jsonl"
+}

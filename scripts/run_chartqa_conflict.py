@@ -14,6 +14,7 @@ import math
 import os
 import random
 import re
+import tempfile
 import sys
 from collections import Counter
 from decimal import Decimal, InvalidOperation
@@ -24,6 +25,7 @@ from types import SimpleNamespace
 import torch
 from tqdm import tqdm
 from datasets import Dataset, load_dataset
+from PIL import Image
 
 sys.path.insert(0, str(Path(__file__).resolve().parents[1]))
 
@@ -195,6 +197,72 @@ def load_published_conflict_dataset(repo, revision, expected_n):
     return manifest, items_by_id
 
 
+def load_table_ablation_manifest(path: Path, expected_n: int):
+    """Load rendered table images while preserving the frozen conflict metadata."""
+    rows = []
+    with path.open(encoding="utf-8") as handle:
+        for line in handle:
+            if line.strip():
+                rows.append(json.loads(line))
+    if len(rows) != expected_n:
+        raise RuntimeError(
+            f"Table manifest has {len(rows)} items; requested {expected_n}"
+        )
+
+    manifest, items_by_id = [], {}
+    for index, row in enumerate(rows):
+        required = {
+            "conflict_id", "pool_conflict_id", "chartqa_test_index", "question",
+            "chart_answer", "report_answer", "answer_type", "unit_class",
+            "counterfactual_strategy", "text_report", "chart_source_label",
+            "report_source_label", "source_table", "table_image_file",
+            "table_image_sha256",
+        }
+        missing = sorted(required - row.keys())
+        if missing:
+            raise RuntimeError(
+                f"Table manifest row {index} is missing fields: {missing}"
+            )
+        image_path = (path.parent / row["table_image_file"]).resolve()
+        if not image_path.is_file():
+            raise RuntimeError(f"Missing table image: {image_path}")
+        image_bytes = image_path.read_bytes()
+        actual_hash = hashlib.sha256(image_bytes).hexdigest()
+        if actual_hash != row["table_image_sha256"]:
+            raise RuntimeError(
+                f"Table image checksum mismatch for conflict {row['conflict_id']}: "
+                f"{actual_hash} != {row['table_image_sha256']}"
+            )
+
+        dataset_index = int(row["chartqa_test_index"])
+        manifest.append({
+            "conflict_id": int(row["conflict_id"]),
+            "pool_conflict_id": int(row["pool_conflict_id"]),
+            "dataset_index": dataset_index,
+            "question": row["question"],
+            "image_answer": row["chart_answer"],
+            "text_answer": row["report_answer"],
+            "answer_type": row["answer_type"],
+            "image_label": row["chart_source_label"],
+            "text_label": row["report_source_label"],
+            "report_type": "evidence",
+            "counterfactual_strategy": row["counterfactual_strategy"],
+            "unit_class": row["unit_class"],
+            "text_report": row["text_report"],
+            "source_table": row["source_table"],
+            "evidence_validation": {
+                "entailed": True,
+                "counterfactual_valid": True,
+                "reviewer": "frozen curated dataset",
+                "notes": "Metadata inherited from the audited ChartQA-Conflict item.",
+            },
+        })
+        items_by_id[dataset_index] = SimpleNamespace(
+            id=dataset_index, image=Image.open(image_path).convert("RGB").copy()
+        )
+    return manifest, items_by_id
+
+
 def report_text(row):
     report = row.get("text_report")
     if not report:
@@ -226,16 +294,20 @@ def validate_manifest(manifest, report_type):
         raise RuntimeError(f"Manifest failed {report_type} validation:\n{preview}")
 
 
-def neutral_prompt(row, report, chain_of_thought):
-    image_line = f"Source {row['image_label']} is the attached chart."
+def neutral_prompt(row, report, chain_of_thought, visual_representation="chart"):
+    visual_name = "chart" if visual_representation == "chart" else "table image"
+    image_line = f"Source {row['image_label']} is the attached {visual_name}."
     text_line = f"Source {row['text_label']} is the textual report below:\n{report}"
     lines = [image_line, text_line] if row["image_label"] == "A" else [text_line, image_line]
     # Generation is deliberately answer-only.  Asking for a rationale caused some
     # models to exhaust their output budget before emitting the marked answer and
     # makes strict source attribution needlessly dependent on trace parsing.
     ending = (
+        "Select exactly one source-supported answer, even though the sources disagree. "
+        "Do not abstain, hedge, combine the answers, or list alternatives. "
         "Respond with exactly one line in the form '#### <answer>'. "
-        "After ####, give only the answer value; do not explain your reasoning."
+        "After ####, copy only the bare answer value (for example, 3.89 or 12.8%); "
+        "do not include words, source names, or an explanation."
     )
     return (
         f"Question: {row['question']}\n\n"
@@ -244,13 +316,14 @@ def neutral_prompt(row, report, chain_of_thought):
     )
 
 
-def unimodal_prompt(row, arm, report=None):
+def unimodal_prompt(row, arm, report=None, visual_representation="chart"):
     ending = (
         "Respond with exactly one line in the form '#### <answer>'. "
         "After ####, give only the answer value; do not explain your reasoning."
     )
     if arm == "image":
-        evidence = "Use the attached chart as the only evidence source."
+        visual_name = "chart" if visual_representation == "chart" else "table image"
+        evidence = f"Use the attached {visual_name} as the only evidence source."
     else:
         evidence = f"Use the following report as the only evidence source:\n{report}"
     return f"Question: {row['question']}\n\n{evidence}\n\n{ending}"
@@ -349,37 +422,90 @@ def load_jsonl(path):
     return rows
 
 
-def run_level(vlm, items_by_id, manifest, model_dir, arm, level, mode):
+def reuse_image_l0_for_text_arm(condition_root, model_key, model_dir, expected):
+    """Reuse the identical clean endpoint instead of making a second API call.
+
+    The L0 chart and report are identical in both arms. Reusing the image-arm
+    generations removes API nondeterminism from the arm contrast.
+    """
+    source = (
+        condition_root / "image" / model_key /
+        "level_0_clean.generation.jsonl"
+    )
+    target = model_dir / "level_0_clean.generation.jsonl"
+    rows = load_jsonl(source)
+    if len(rows) != expected:
+        raise RuntimeError(
+            f"Cannot reuse L0: expected {expected} rows in {source}; found {len(rows)}"
+        )
+    if target.exists():
+        existing = load_jsonl(target)
+        if len(existing) == expected:
+            return
+        raise RuntimeError(
+            f"Refusing to overwrite incomplete text-arm L0 file: {target}"
+        )
+    with tempfile.NamedTemporaryFile(
+        "w", encoding="utf-8", delete=False, dir=model_dir, suffix=".jsonl.tmp"
+    ) as handle:
+        temp_path = Path(handle.name)
+        for i in sorted(rows):
+            record = dict(rows[i])
+            record["arm"] = "text"
+            handle.write(json.dumps(record, ensure_ascii=False) + "\n")
+    os.replace(temp_path, target)
+    print(f"Reused image-arm L0 generations -> {target}")
+
+
+def run_level(
+    vlm, items_by_id, manifest, model_dir, arm, level, mode,
+    visual_representation="chart",
+):
     name = TEXT_NOISE_LEVELS[level]["name"] if arm == "text" else NOISE_LEVELS[level]["name"]
     path = model_dir / f"level_{level}_{name}.{mode}.jsonl"
     done = load_jsonl(path)
     with path.open("a", encoding="utf-8") as output:
-        for i, row in enumerate(tqdm(manifest, desc=f"{mode} {arm} L{level}")):
-            if i in done:
+        for row in tqdm(manifest, desc=f"{mode} {arm} L{level}"):
+            # Use the frozen conflict ID rather than the row's position. This
+            # preserves identical corruption seeds when an audited subset is run.
+            item_index = int(row["conflict_id"])
+            if item_index in done:
                 continue
             item = items_by_id[row["dataset_index"]]
             image = item.image.convert("RGB")
             report = report_text(row)
             if arm == "image":
-                image = apply_noise_level(image, level, text=None, seed=42 + i)
+                image = apply_noise_level(
+                    image, level, text=None, seed=42 + item_index
+                )
             elif level != 0:
-                report = degrade_text(report, level, seed=i)
+                report = degrade_text(report, level, seed=item_index)
             try:
                 if mode == "generation":
-                    prompt = neutral_prompt(row, report, chain_of_thought=True)
+                    prompt = neutral_prompt(
+                        row, report, chain_of_thought=True,
+                        visual_representation=visual_representation,
+                    )
                     prediction = vlm.generate_with_image(image, text_prompt=prompt)
                     follows, extracted, normalized = classify(prediction, row)
                     result = {"prediction": prediction, "extracted_final": extracted,
-                              "normalized_final": repr(normalized), "follows": follows}
+                              "normalized_final": repr(normalized), "follows": follows,
+                              "api_response_meta": getattr(
+                                  vlm, "last_response_meta", None
+                              )}
                 elif mode == "cll":
-                    prompt = neutral_prompt(row, report, chain_of_thought=False)
+                    prompt = neutral_prompt(
+                        row, report, chain_of_thought=False,
+                        visual_representation=visual_representation,
+                    )
                     margin = vlm.candidate_margin(
                         image, row["text_answer"], row["image_answer"], prompt
                     )
                     result = {"margin": margin}
                 else:
                     prompt = unimodal_prompt(
-                        row, arm, report=report if arm == "text" else None
+                        row, arm, report=report if arm == "text" else None,
+                        visual_representation=visual_representation,
                     )
                     prediction = (
                         vlm.generate_with_image(image, text_prompt=prompt)
@@ -409,8 +535,10 @@ def run_level(vlm, items_by_id, manifest, model_dir, arm, level, mode):
                     result.update(prediction="", follows="invalid")
                 else:
                     result["margin"] = None
-            record = {"i": i, "dataset_index": row["dataset_index"], "level": level,
-                      "arm": arm, "design_version": DESIGN_VERSION, **result}
+            record = {"i": item_index, "dataset_index": row["dataset_index"],
+                      "level": level,
+                      "arm": arm, "design_version": DESIGN_VERSION,
+                      "visual_representation": visual_representation, **result}
             output.write(json.dumps(record, ensure_ascii=False) + "\n")
             output.flush()
 
@@ -451,10 +579,39 @@ def main():
     parser.add_argument("--mode", choices=("generation", "cll", "decodability"))
     parser.add_argument("--levels", nargs="+", type=int, default=list(LEVELS))
     parser.add_argument("--num-problems", type=int, default=300)
+    parser.add_argument(
+        "--api-output-tokens", type=int, default=1024,
+        help="Completion-token budget for frontier API models (default: 1024).",
+    )
+    parser.add_argument(
+        "--openai-reasoning-effort", default="none",
+        help="Reasoning effort for OpenAI API models; use 'default' to omit it.",
+    )
+    parser.add_argument(
+        "--gemini-thinking-level", default="minimal",
+        choices=("minimal", "low", "medium", "high", "default"),
+        help="Thinking level for Gemini API models; 'default' omits the setting.",
+    )
+    parser.add_argument(
+        "--reuse-image-l0", action="store_true",
+        help="For text-arm generation, copy the identical image-arm L0 responses.",
+    )
     parser.add_argument("--seed", type=int, default=20260721)
     parser.add_argument("--output-dir", type=Path,
                         default=Path("results/phase_control/chartqa_conflict"))
     parser.add_argument("--manifest", type=Path, default=None)
+    parser.add_argument(
+        "--visual-representation",
+        choices=("chart", "plain_table"),
+        default="chart",
+        help="Visual evidence format. plain_table requires --table-manifest.",
+    )
+    parser.add_argument(
+        "--table-manifest",
+        type=Path,
+        default=None,
+        help="JSONL manifest produced by prepare_chartqa_table_ablation.py.",
+    )
     parser.add_argument("--report-type", choices=("evidence", "assertion"),
                         default="evidence")
     parser.add_argument("--prepare-only", action="store_true")
@@ -468,9 +625,23 @@ def main():
 
     if any(level not in LEVELS for level in args.levels):
         raise SystemExit(f"Levels must be drawn from {LEVELS}")
+    if args.visual_representation == "plain_table" and not args.table_manifest:
+        parser.error("--visual-representation plain_table requires --table-manifest")
+    if args.visual_representation == "chart" and args.table_manifest:
+        parser.error("--table-manifest requires --visual-representation plain_table")
+    if args.table_manifest and (args.dataset_repo or args.manifest):
+        parser.error(
+            "--table-manifest cannot be combined with --dataset-repo or --manifest"
+        )
     condition_root = args.output_dir / args.report_type
     published_items = None
-    if args.dataset_repo:
+    table_items = None
+    if args.table_manifest:
+        manifest, table_items = load_table_ablation_manifest(
+            args.table_manifest, args.num_problems
+        )
+        manifest_path = args.table_manifest
+    elif args.dataset_repo:
         if not args.dataset_revision:
             raise RuntimeError("--dataset-revision is required with --dataset-repo")
         manifest, published_items = load_published_conflict_dataset(
@@ -481,18 +652,22 @@ def main():
         )
     else:
         manifest_path = args.manifest or condition_root / "manifest.json"
-    if not args.dataset_repo and manifest_path.exists():
+    if not args.dataset_repo and not args.table_manifest and manifest_path.exists():
         with manifest_path.open(encoding="utf-8") as handle:
             manifest = json.load(handle)
         if len(manifest) != args.num_problems:
             raise RuntimeError(f"Manifest has {len(manifest)} items; requested {args.num_problems}")
-    elif not args.dataset_repo and args.report_type == "assertion":
+    elif (
+        not args.dataset_repo
+        and not args.table_manifest
+        and args.report_type == "assertion"
+    ):
         items = (load_chartqa_metadata(args.metadata_arrow) if args.prepare_only
                  else load_benchmark("chartqa", None))
         manifest = build_manifest(items, args.num_problems, args.seed)
         manifest_path.parent.mkdir(parents=True, exist_ok=True)
         atomic_json(manifest_path, manifest)
-    elif not args.dataset_repo:
+    elif not args.dataset_repo and not args.table_manifest:
         raise RuntimeError(
             "The evidence-bearing main condition requires a prebuilt --manifest with "
             "text_report, source_table, and evidence_validation. Use the official "
@@ -504,7 +679,9 @@ def main():
         return
     if not args.models or args.arm is None or args.mode is None:
         parser.error("--models, --arm, and --mode are required unless --prepare-only is used")
-    if published_items is not None:
+    if table_items is not None:
+        items_by_id = table_items
+    elif published_items is not None:
         items_by_id = published_items
     else:
         items = load_benchmark("chartqa", None)
@@ -521,6 +698,19 @@ def main():
         model_dir.mkdir(parents=True, exist_ok=True)
         config = {"design_version": DESIGN_VERSION, "model": model_key, "arm": args.arm,
                   "mode": args.mode, "report_type": args.report_type, "n": len(manifest),
+                  "api_output_tokens": args.api_output_tokens,
+                  "openai_reasoning_effort": args.openai_reasoning_effort,
+                  "gemini_thinking_level": args.gemini_thinking_level,
+                  "reuse_image_l0": args.reuse_image_l0,
+                  "visual_representation": args.visual_representation,
+                  "table_manifest_name": (
+                      args.table_manifest.name
+                      if args.table_manifest else None
+                  ),
+                  "table_manifest_sha256": (
+                      hashlib.sha256(args.table_manifest.read_bytes()).hexdigest()
+                      if args.table_manifest else None
+                  ),
                   "manifest_sha256": manifest_digest(manifest),
                   "dataset_repo": args.dataset_repo,
                   "dataset_revision": args.dataset_revision}
@@ -529,12 +719,34 @@ def main():
             raise RuntimeError(f"Incompatible existing configuration: {config_path}")
         atomic_json(config_path, config)
         spec = MODEL_REGISTRY[model_key]
-        vlm = VLMModel(model_name=spec["name"], model_type=spec["type"],
-                       max_new_tokens=128, torch_dtype="bfloat16")
+        is_api = spec["type"] in {"openai", "gemini"}
+        if args.reuse_image_l0:
+            if args.arm != "text" or args.mode != "generation":
+                parser.error("--reuse-image-l0 requires --arm text --mode generation")
+            reuse_image_l0_for_text_arm(
+                condition_root, model_key, model_dir, len(manifest)
+            )
+        vlm = VLMModel(
+            model_name=spec["name"],
+            model_type=spec["type"],
+            max_new_tokens=args.api_output_tokens if is_api else 128,
+            torch_dtype="bfloat16",
+            openai_reasoning_effort=(
+                None if args.openai_reasoning_effort == "default"
+                else args.openai_reasoning_effort
+            ),
+            gemini_thinking_level=(
+                None if args.gemini_thinking_level == "default"
+                else args.gemini_thinking_level
+            ),
+        )
         vlm.load()
         try:
             for level in args.levels:
-                run_level(vlm, items_by_id, manifest, model_dir, args.arm, level, args.mode)
+                run_level(
+                    vlm, items_by_id, manifest, model_dir, args.arm, level,
+                    args.mode, visual_representation=args.visual_representation,
+                )
         finally:
             vlm.unload()
         summarize(model_dir, args.arm, args.mode)

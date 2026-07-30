@@ -136,3 +136,49 @@ sources and counterbalances their A/B labels. Per-model output directories conta
 `experiment_config.json`; the runner refuses to mix a different model, channel, prompt
 version, sample size, or dataset fingerprint into an existing directory. Analyze the
 matched original-versus-neutral CLL contrast with `scripts/analyze_role_control.py`.
+
+## Natural-visual conflict control
+
+`scripts/run_chartqa_conflict.py` is the canonical genuinely visual conflict probe. A
+clean shared ChartQA question is accompanied by two conflicting evidence sources: the
+native chart supports the dataset gold answer, while an evidence-bearing textual report
+contains counterfactual chart facts supporting a distinct answer. Only the chart or report
+is degraded in each arm; the shared question remains clean. Evidence manifests must be
+compiled by `scripts/prepare_chartqa_evidence.py` from the official ChartQA CSV tables and
+contain an explicit entailment review. The answer-asserting report type is an ablation, not
+the main condition. Manifests are seeded, hashed, and reused across models and arms. Use
+`scripts/analyze_chartqa_conflict.py` for the paired endpoint contrast.
+
+For nondeterministic API models, run a 30-item ChartQA generation smoke test before the
+full dataset and gate it with `scripts/audit_frontier_chartqa.py`. Frontier requests use
+an explicit answer-only prompt, a 1024-token default API completion budget, and reduced
+provider reasoning (`none` for OpenAI and `minimal` for Gemini, with compatibility
+fallbacks). Response finish reasons and token usage are saved in `api_response_meta`.
+Run the image arm first and pass `--reuse-image-l0` to the text arm so both arm contrasts
+share exactly the same clean generations.
+
+Counterfactual construction is typed and recorded per item. Numeric alternatives should
+prefer another value present in the chart, a nearby-category value, a deterministic rank
+swap, or a plausible arithmetic alternative; a unit-preserving perturbation is the last
+resort. Boolean answers are flipped only when the counterfactual report contains coherent
+support. Compilation rejects normalized-equivalent answers, answer-type or percent/count
+mismatches, and substring collisions, and requires a reviewer to certify that the
+counterfactual is possible under the question and entailed by the report. Dates, rounding,
+units, category alignment, and arithmetic consistency are part of that manual certification.
+The full construction and exclusion protocol is in
+`docs/CHARTQA_COUNTERFACTUAL_PROTOCOL.md`.
+Generated responses use strict canonical final-answer matching with no tolerance or lexical
+reasoning-trace rescore; `neither`, `invalid`, and `ambiguous` remain separate outcomes.
+
+### Chart/table representation ablation
+
+The controlled representation ablation replaces each native chart with a plain table image
+rendered from the corresponding official ChartQA CSV while preserving the question,
+chart-supported answer, conflicting report, report-supported answer, source labels, prompts,
+and degradation protocol. `scripts/prepare_chartqa_table_ablation.py` creates the images and
+manifest; `scripts/audit_chartqa_table_ablation.py` verifies official CSV cells, saved-image
+checksums, and deterministic re-rendered pixels. Inference uses
+`scripts/run_chartqa_conflict.py --visual-representation plain_table --table-manifest ...`.
+The paired chart/table release is built by
+`scripts/publish_chartqa_table_ablation_dataset.py` as a new dataset and must not replace the
+frozen ChartQA-Conflict v1 dataset underlying the paper's current results.

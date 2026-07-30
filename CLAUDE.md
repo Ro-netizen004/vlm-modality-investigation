@@ -84,6 +84,27 @@ legibility arms with neither modality designated as the task. Runs write a confi
 fingerprint and refuse incompatible resumes; compare original and neutral CLL asymmetry
 with `scripts/analyze_role_control.py`.
 
+Natural-visual conflict control: compile a reviewed evidence-bearing manifest from the
+official ChartQA tables with `scripts/prepare_chartqa_evidence.py`, then run
+`scripts/run_chartqa_conflict.py --report-type evidence`. Answer assertions are ablation
+only. Counterfactuals must follow `docs/CHARTQA_COUNTERFACTUAL_PROTOCOL.md`; the compiler
+requires a typed strategy, unit class, entailment review, and validity certification.
+Generated attribution is exact normalized A/B matching only; never apply the GSM8K lexical
+reasoning-trace rescore. Analyze paired endpoints with `scripts/analyze_chartqa_conflict.py`.
+
+Chart/table representation ablation: render the same official ChartQA table facts with
+`scripts/prepare_chartqa_table_ablation.py`, verify every official CSV and rendered image
+with `scripts/audit_chartqa_table_ablation.py`, and run the existing conflict pipeline with
+`--visual-representation plain_table --table-manifest <manifest.jsonl>`. Do not edit table
+values toward the report answer. Publish paired `chart_image`/`table_image` rows only as a
+new dataset version via `scripts/publish_chartqa_table_ablation_dataset.py`; never overwrite
+the frozen v1 dataset used by the existing results.
+
+Frontier ChartQA runs must pass a 30-item generation smoke test with
+`scripts/audit_frontier_chartqa.py` before a full launch. Use answer-only generation,
+low/minimal provider reasoning, persist `api_response_meta`, and run the image arm first;
+the text arm should use `--reuse-image-l0` so the identical clean endpoint is not resampled.
+
 ## Reproducibility checklist (new runs)
 
 - Pin `transformers` / `torch` in `requirements.txt` when changing env  

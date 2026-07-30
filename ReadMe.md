@@ -196,3 +196,40 @@ Use `scripts/run_legibility.py --prompt-role neutral` to test whether the degrad
 asymmetry survives when neither text nor image is designated as the task. Run both channels
 on identical items, then use `scripts/analyze_role_control.py` for the paired comparison.
 Each run records a configuration fingerprint and rejects incompatible checkpoint reuse.
+
+Reproduce the matched GSM8K prompt-framing table with:
+
+```bash
+python scripts/analyze_role_control.py \
+  --models Qwen2-VL-2B-Instruct Qwen2.5-VL-7B-Instruct \
+    Idefics3-8B-Llama3 llava-onevision-qwen2-7b-ov-hf \
+    Phi-3.5-vision-instruct \
+  --resamples 10000
+```
+
+### Natural-visual ChartQA conflict
+
+Use `scripts/prepare_chartqa_evidence.py` with the official ChartQA CSV tables to compile
+a reviewed evidence-bearing counterfactual manifest, then run it with
+`scripts/run_chartqa_conflict.py --report-type evidence`. The two degradation arms hold
+the shared question clean and degrade only the chart or report. Answer-asserting reports
+are retained only as an ablation. Analyze endpoints with
+`scripts/analyze_chartqa_conflict.py`.
+
+Each reviewed item records how its counterfactual was formed: an alternative chart value,
+nearby-category value, rank swap, plausible arithmetic alternative, unit-preserving
+perturbation, or boolean flip. Prefer chart-grounded values. The compiler rejects normalized
+duplicates, type/unit mismatches, and substring collisions; reviewers must additionally
+certify question feasibility, coherent evidence, rounding, date, and category consistency.
+See `docs/CHARTQA_COUNTERFACTUAL_PROTOCOL.md` for the item-level rules and exclusion policy.
+Generated answers are attributed only by exact normalized A/B matches from an explicit final
+answer; no numeric tolerance or lexical reasoning-trace rescore is used.
+
+For the chart-versus-table representation ablation, use
+`scripts/prepare_chartqa_table_ablation.py` to render the same official chart facts as plain
+table images, then verify the complete CSV-to-image provenance chain with
+`scripts/audit_chartqa_table_ablation.py --chartqa-root <official-chartqa-root>`. Run the
+table condition through the same inference script using
+`--visual-representation plain_table --table-manifest <manifest.jsonl>`. A separate paired
+dataset containing both `chart_image` and `table_image` can be built or published with
+`scripts/publish_chartqa_table_ablation_dataset.py`; the frozen v1 dataset remains unchanged.
