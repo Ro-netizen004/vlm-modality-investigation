@@ -422,7 +422,9 @@ def load_jsonl(path):
     return rows
 
 
-def reuse_image_l0_for_text_arm(condition_root, model_key, model_dir, expected):
+def reuse_image_l0_for_text_arm(
+    condition_root, model_key, model_dir, expected, mode
+):
     """Reuse the identical clean endpoint instead of making a second API call.
 
     The L0 chart and report are identical in both arms. Reusing the image-arm
@@ -430,9 +432,9 @@ def reuse_image_l0_for_text_arm(condition_root, model_key, model_dir, expected):
     """
     source = (
         condition_root / "image" / model_key /
-        "level_0_clean.generation.jsonl"
+        f"level_0_clean.{mode}.jsonl"
     )
-    target = model_dir / "level_0_clean.generation.jsonl"
+    target = model_dir / f"level_0_clean.{mode}.jsonl"
     rows = load_jsonl(source)
     if len(rows) != expected:
         raise RuntimeError(
@@ -454,7 +456,7 @@ def reuse_image_l0_for_text_arm(condition_root, model_key, model_dir, expected):
             record["arm"] = "text"
             handle.write(json.dumps(record, ensure_ascii=False) + "\n")
     os.replace(temp_path, target)
-    print(f"Reused image-arm L0 generations -> {target}")
+    print(f"Reused image-arm L0 {mode} rows -> {target}")
 
 
 def run_level(
@@ -594,7 +596,10 @@ def main():
     )
     parser.add_argument(
         "--reuse-image-l0", action="store_true",
-        help="For text-arm generation, copy the identical image-arm L0 responses.",
+        help=(
+            "For text-arm generation or CLL, copy the identical image-arm L0 "
+            "rows instead of recomputing them."
+        ),
     )
     parser.add_argument("--seed", type=int, default=20260721)
     parser.add_argument("--output-dir", type=Path,
@@ -721,10 +726,13 @@ def main():
         spec = MODEL_REGISTRY[model_key]
         is_api = spec["type"] in {"openai", "gemini"}
         if args.reuse_image_l0:
-            if args.arm != "text" or args.mode != "generation":
-                parser.error("--reuse-image-l0 requires --arm text --mode generation")
+            if args.arm != "text" or args.mode not in {"generation", "cll"}:
+                parser.error(
+                    "--reuse-image-l0 requires --arm text and "
+                    "--mode generation or cll"
+                )
             reuse_image_l0_for_text_arm(
-                condition_root, model_key, model_dir, len(manifest)
+                condition_root, model_key, model_dir, len(manifest), args.mode
             )
         vlm_kwargs = {
             "model_name": spec["name"],
