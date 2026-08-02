@@ -99,7 +99,8 @@ class VLMModel:
     """Unified interface for VLM inference across architectures."""
 
     def __init__(self, model_name, model_type, max_new_tokens=256,
-                 torch_dtype="bfloat16", quantize=None, attn_implementation=None):
+                 torch_dtype="bfloat16", quantize=None, attn_implementation=None,
+                 openai_reasoning_effort=None, gemini_thinking_level=None):
         self.model_name = model_name
         self.model_type = model_type
         self.max_new_tokens = max_new_tokens
@@ -108,6 +109,8 @@ class VLMModel:
         # Set to "eager" when attention weights are needed (output_attentions=True);
         # the default SDPA backend returns None for attentions.
         self.attn_implementation = attn_implementation
+        self.openai_reasoning_effort = openai_reasoning_effort
+        self.gemini_thinking_level = gemini_thinking_level
         self.model = None
         self.processor = None
         self.tokenizer = None  # some models need a separate tokenizer
@@ -115,6 +118,8 @@ class VLMModel:
         self.usage = {"input_tokens": 0, "output_tokens": 0, "calls": 0}
         # Per-call output-token logprobs from the last API call (None for local models)
         self.last_logprobs = None
+        # Provider metadata needed to diagnose empty/truncated frontier outputs.
+        self.last_response_meta = None
         self._openai_supports_logprobs = True  # flipped off if the model rejects logprobs
 
     def load(self):
@@ -321,6 +326,7 @@ class VLMModel:
         """One chat completion with exponential backoff; records usage + logprobs."""
         import time
         self.last_logprobs = None
+        self.last_response_meta = None
         last_err = None
         base = dict(model=self.model_name,
                     messages=[{"role": "user", "content": content}],
@@ -334,6 +340,19 @@ class VLMModel:
                     self.usage["output_tokens"] += getattr(u, "completion_tokens", 0) or 0
                 self.usage["calls"] += 1
                 self.last_logprobs = self._extract_openai_logprobs(r)
+                choice = r.choices[0]
+                completion_details = getattr(u, "completion_tokens_details", None) if u else None
+                self.last_response_meta = {
+                    "provider": "openai",
+                    "finish_reason": getattr(choice, "finish_reason", None),
+                    "refusal": getattr(getattr(choice, "message", None), "refusal", None),
+                    "prompt_tokens": getattr(u, "prompt_tokens", None) if u else None,
+                    "completion_tokens": getattr(u, "completion_tokens", None) if u else None,
+                    "reasoning_tokens": (
+                        getattr(completion_details, "reasoning_tokens", None)
+                        if completion_details else None
+                    ),
+                }
                 return r.choices[0].message.content or ""
             except Exception as e:
                 last_err = e
@@ -344,6 +363,8 @@ class VLMModel:
         """Create a completion, dropping optional params the model rejects
         (temperature, logprobs) so unsupported models still return an answer."""
         opts = dict(base, temperature=0)
+        if self.openai_reasoning_effort is not None:
+            opts["reasoning_effort"] = self.openai_reasoning_effort
         if self._openai_supports_logprobs:
             opts.update(logprobs=True, top_logprobs=5)
         for _ in range(3):
@@ -353,6 +374,8 @@ class VLMModel:
                 msg = str(e).lower()
                 if "temperature" in msg and "temperature" in opts:
                     opts.pop("temperature")
+                elif ("reasoning" in msg or "effort" in msg) and "reasoning_effort" in opts:
+                    opts.pop("reasoning_effort")
                 elif "logprob" in msg and "logprobs" in opts:
                     opts.pop("logprobs", None); opts.pop("top_logprobs", None)
                     self._openai_supports_logprobs = False  # stop asking on later calls
@@ -405,6 +428,7 @@ class VLMModel:
         import time
         from google.genai import types
         self.last_logprobs = None
+        self.last_response_meta = None
         last_err = None
         for attempt in range(6):
             try:
@@ -425,6 +449,16 @@ class VLMModel:
                     self.usage["output_tokens"] += getattr(um, "candidates_token_count", 0) or 0
                 self.usage["calls"] += 1
                 self.last_logprobs = self._extract_gemini_logprobs(r)
+                candidates = getattr(r, "candidates", None) or []
+                candidate = candidates[0] if candidates else None
+                self.last_response_meta = {
+                    "provider": "gemini",
+                    "finish_reason": str(getattr(candidate, "finish_reason", None)),
+                    "finish_message": getattr(candidate, "finish_message", None),
+                    "prompt_tokens": getattr(um, "prompt_token_count", None) if um else None,
+                    "output_tokens": getattr(um, "candidates_token_count", None) if um else None,
+                    "thinking_tokens": getattr(um, "thoughts_token_count", None) if um else None,
+                }
                 try:
                     return r.text or ""
                 except Exception:
@@ -436,6 +470,14 @@ class VLMModel:
 
     def _gemini_config(self, types, want_logprobs):
         kw = dict(temperature=0, max_output_tokens=max(self.max_new_tokens, 512))
+        if self.gemini_thinking_level is not None:
+            try:
+                kw["thinking_config"] = types.ThinkingConfig(
+                    thinking_level=self.gemini_thinking_level
+                )
+            except (AttributeError, TypeError):
+                # Older google-genai SDKs do not expose ThinkingConfig.
+                pass
         if want_logprobs:
             try:
                 return types.GenerateContentConfig(response_logprobs=True, logprobs=5, **kw)
