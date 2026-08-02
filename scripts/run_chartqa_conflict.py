@@ -38,7 +38,7 @@ from src.text_noise import TEXT_NOISE_LEVELS, degrade_text
 
 DESIGN_VERSION = "chartqa-same-question-conflict-v4"
 LEVELS = (0, 2, 4, 5)
-DEFAULT_DATASET_REPO = "vlm-modality-research/chartqa-evidence-conflict-v1"
+DEFAULT_DATASET_REPO = "vlm-modality-research/chartqa-evidence-conflict-v2"
 DEFAULT_DATASET_REVISION = "3ead711196b4bf75ae6c23be8148bb8417047c4e"
 FROZEN_MANIFEST_SHA256 = (
     "388bce0572487024f5ac12261621cbab8931ec3032d8bf0c65a258c134d20842"
@@ -150,10 +150,12 @@ def load_chartqa_metadata(arrow_path=None):
 def load_published_conflict_dataset(repo, revision, expected_n):
     """Load the frozen derivative dataset and reconstruct its manifest exactly."""
     dataset = load_dataset(repo, split="test", revision=revision)
-    if len(dataset) != expected_n:
+    full_n = len(dataset)
+    if expected_n <= 0 or expected_n > full_n:
         raise RuntimeError(
-            f"Published dataset has {len(dataset)} rows; expected {expected_n}"
+            f"Published dataset has {len(dataset)} rows; cannot select {expected_n}"
         )
+    dataset = dataset.select(range(expected_n))
     embedded_hashes = set(dataset["manifest_sha256"])
     if embedded_hashes != {FROZEN_MANIFEST_SHA256}:
         raise RuntimeError(
@@ -189,7 +191,7 @@ def load_published_conflict_dataset(repo, revision, expected_n):
             id=dataset_index, image=row["image"]
         )
     digest = manifest_digest(manifest)
-    if digest != FROZEN_MANIFEST_SHA256:
+    if expected_n == full_n and digest != FROZEN_MANIFEST_SHA256:
         raise RuntimeError(
             f"Reconstructed manifest hash {digest} does not match frozen "
             f"{FROZEN_MANIFEST_SHA256}"
@@ -202,11 +204,14 @@ def load_paired_representation_dataset(
 ):
     """Load the pinned chart/table release and select one visual representation."""
     dataset = load_dataset(repo, split="test", revision=revision)
-    if len(dataset) != expected_n:
+    if expected_n <= 0 or expected_n > len(dataset):
         raise RuntimeError(
             f"Paired representation dataset has {len(dataset)} rows; "
-            f"expected {expected_n}"
+            f"cannot select {expected_n}"
         )
+    # Deterministic prefix subsets support paid-API smoke tests while retaining
+    # the frozen row order and original conflict IDs. Full runs select all rows.
+    dataset = dataset.select(range(expected_n))
     required = {
         "conflict_id", "pool_conflict_id", "chartqa_test_index",
         "chart_image", "table_image", "question", "chart_answer",
